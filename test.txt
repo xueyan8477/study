@@ -1,0 +1,40 @@
+一、什么是 AJAX
+AJAX = 异步 JavaScript 和 XML；
+AJAX 是一种用于创建快速动态网页的技术，通过在后台与服务器进行少量数据交换，AJAX 可以使网页实现异步更新。这意味着可以在不重新加载整个网页的情况下，对网页的某部分进行更新。
+传统的网页（不使用 AJAX）如果需要更新内容，必需重载整个网页面
+二、工作原理
+1、浏览器发生某个事件，创建XMLHttpRequest对象，发送HTTPRequest
+2、服务器处理HTTPRequset，创建相应并将数据返回浏览器
+3、使用js处理返回的数据，更新页面内容。
+三、使用步骤
+1、创建XMLHTTPRequest对象
+    var xmlhttp = new XMLHttpRequset();
+2、向服务器发送请求
+例：xmlhttp.open("GET","ajax_info.txt",true)
+    xmlhttp.send();
+方法：open(methods,url,async)  请求的类型（GET或者POST），文件在服务器上的位置、true（异步）或false（同步）
+    send(string),将请求发送到服务器，string仅用于post请求
+
+xmlhttp.open("GET","/try/ajax/demo_get.php?t=" + Math.random(),true);为了避免缓存，要在url后面加入一个唯一的id
+
+如果需要像html表单那样post数据，请使用setRequsetHeader()来添加HTTP头。然后在send方法中规定希望发送的数据。
+
+四、GET 和 POST 方法的区别
+1、发送的数据数量
+在GET中，只能发送有限数量的数据，因为数据是在URL中发送的。
+在POST中，可以发送大量的数据，因为数据是在正文主体中发送的。
+2、安全性
+GET方法发送的数据不受保护，因为数据在URL栏中公开，这增加了漏洞和黑客攻击的风险。
+POST方法发送的数据是安全的，因为数据未在URL栏中公开，还可以在其中使用多种编码技术，这使其具有弹性。
+3、加入书签中
+GET查询的结果可以加入书签中，因为它以URL的形式存在；而POST查询的结果无法加入书签中。
+4、编码
+在表单中使用GET方法时，数据类型中只接受 ASCII 字符。
+在表单提交时，POST方法不绑定表单数据类型，并允许二进制和ASCII字符。
+5、可变大小
+GET方法中的可变大小约为2000个字符。
+POST方法最多允许8Mb的可变大小。
+6、缓存
+GET方法的数据是可缓存的，而POST方法的数据是无法缓存的。
+7、主要作用
+GET方法主要用于获取信息。而POST方法主要用于更新数据。
