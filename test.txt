@@ -15,9 +15,49 @@ AJAX 是一种用于创建快速动态网页的技术，通过在后台与服务
 方法：open(methods,url,async)  请求的类型（GET或者POST），文件在服务器上的位置、true（异步）或false（同步）
     send(string),将请求发送到服务器，string仅用于post请求
 
+异步的设置，如果async为true时，规定响应处于 onreadystatechange事件中的就绪状态时执行的函数
+xmlhttp.onreadystatechange=function()
+{
+    if (xmlhttp.readyState==4 && xmlhttp.status==200)
+    {
+        // 在此处执行ajax响应后的事情
+    }
+}
+
+当async为false时，
+xmlhttp.open("GET","/try/ajax/ajax_info.txt",false);
+xmlhttp.send();
+document.getElementById("myDiv").innerHTML=xmlhttp.responseText;
+
+此时，js会等到服务器响应才会继续执行，在此期间应用程序会停止。
+
 xmlhttp.open("GET","/try/ajax/demo_get.php?t=" + Math.random(),true);为了避免缓存，要在url后面加入一个唯一的id
 
 如果需要像html表单那样post数据，请使用setRequsetHeader()来添加HTTP头。然后在send方法中规定希望发送的数据。
+xmlhttp.open("POST","/try/ajax/demo_post2.php",true);
+xmlhttp.setRequestHeader("Content-type","application/x-www-form-urlencoded");
+xmlhttp.send("fname=Henry&lname=Ford");
+
+setRequestHeader(header,value),header: 规定头的名称
+value: 规定头的值
+3、服务器响应
+如需获得来自服务器的响应，请使用 XMLHttpRequest 对象的 responseText 或 responseXML 属性
+xmlhttp.responseText
+
+onreadystatechange事件：
+当请求被发送到服务器时，我们需要执行一些基于响应的任务,每当readyState改变时，就会触发onreadystatechange事件,readyState 属性存有 XMLHttpRequest 的状态信息。
+readyState：	
+    0: 请求未初始化（还没有调用 open()）
+    1: 服务器连接已建立,但是还没有发送（还没有调用 send()）
+    2: 请求已接收
+    3: 请求处理中
+    4: 请求已完成，且响应已就绪
+status：
+    200: "OK"
+    404: 未找到页面
+
+xmlhttp.readyState==4 && xmlhttp.status==200,当 readyState 等于 4 且状态为 200 时，表示响应已就绪
+onreadystatechange 事件被触发 4 次（0 - 4）, 分别是： 0-1、1-2、2-3、3-4，对应着 readyState 的每个变化
 
 四、GET 和 POST 方法的区别
 1、发送的数据数量
