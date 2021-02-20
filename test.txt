@@ -323,3 +323,404 @@ console.log("文件解压完成。");
 
 $ node decompress.js 
 文件解压完成。
+五：Node.js模块系统
+一个 Node.js 文件就是一个模块，这个文件可能是JavaScript 代码、JSON 或者编译过的C/C++ 扩展
+
+创建一个 main.js 文件并引入 hello 模块
+var hello = require('./hello');
+hello.world();
+Node.js 提供了 exports 和 require 两个对象，其中 exports 是模块公开的接口，require 用于从外部获取一个模块的接口，即所获取模块的 exports 对象
+
+创建 hello.js 文件，代码如下：
+exports.world = function() {
+  console.log('Hello World');
+}
+此处见之前笔记。
+
+require内部加载逻辑
+在路径 Y 下执行 require(X) 语句执行顺序：
+  1、如果 X 是核心模块（例如：require("http")）
+　　1.1.返回该模块
+　　1.2.不再继续执行
+　2、如果X是以“./”、“/”或“../”开头
+　　2.1.把X当成文件，从指定路径开始，依次查找下面文件：X、X.js、X.json、X.node，
+    （将 X 作为 JavaScript 文本载入
+    将 X.js 作为 JavaScript 文本载入
+    解析 X.json 为 JavaScript 对象
+    X.node 作为二进制插件）
+    只要其中一个存在，就返回该文件，不再继续执行
+　　2.2.把X当成目录，从指定路径开始，依次查找下面文件：
+    X/package.json(查找main字段，并let M = X+(json main字段),将M作为参数，继续执行2.1，再执行M/index.js、M/index.json、M/index.node
+    X/index.js、
+    X/index.json、
+    X/index.node，
+    只要其中一个存在，就返回该文件，不再继续执行
+　3.如果 X 不是核心模块，也没有以“./”、“/”或“../”开头，则Nodejs会从当前模块的父目录开始，尝试从它的 /node_module 目录里加载模块，如果还是没有找到，则移动到再上一层父目录，直到文件系统的根目录
+　4.抛出“not found”
+2、缓存机制
+  缓存机制，任何模块只要被加载过一次，就会被缓存起来，第二次就直接从缓存中取
+  核心模块都保存在lib目录下
+  自定义模块时，不要和核心模块重名
+  require('./xxx') ./表示当前js文件所在的路径
+  当require加载一个模块时，会把一个模块中的代码都执行一遍
+六、Node.js函数
+和js一毛一样
+七、Node.js路由
+
+
+vue异步组件
+在大型应用中，我们可能需要将应用分割成小一些的代码块，并且只在需要的时候才从服务器加载一个模块。为了简化，Vue 允许你以一个工厂函数的方式定义你的组件，这个工厂函数会异步解析你的组件定义。Vue 只有在这个组件需要被渲染的时候才会触发该工厂函数，且会把结果缓存起来供未来重渲染
+例子:
+vue.component('async-example',function(resolve,reject)){
+  setTimeout(function(){
+    resolve({
+      template:'<div>I am async!</div>'
+    })
+  },1000)
+}
+也可以调用 reject(reason) 来表示加载失败
+有一种推荐的做法：
+  将异步组件和webpack的code-splitting功能一起配合使用。
+Vue.component('async-webpack-example', function (resolve) {
+  // 这个特殊的 `require` 语法将会告诉 webpack
+  // 自动将你的构建代码切割成多个包，这些包
+  // 会通过 Ajax 请求加载
+  require(['./my-async-component'], resolve)
+})
+// 结合es6语法
+Vue.component(
+  'async-webpack-example',
+  // 这个动态导入会返回一个 `Promise` 对象。
+  () => import('./my-async-component')
+)
+//当使用局部注册时，你也可以直接提供一个返回promise的函数
+new Vue({
+  // ...
+  components: {
+    'my-component': () => import('./my-async-component')
+  }
+})
+const AsyncComponent = () => ({
+  // 需要加载的组件 (应该是一个 `Promise` 对象)
+  component: import('./MyComponent.vue'),
+  // 异步组件加载时使用的组件
+  loading: LoadingComponent,
+  // 加载失败时使用的组件
+  error: ErrorComponent,
+  // 展示加载时组件的延时时间。默认值是 200 (毫秒)
+  delay: 200,
+  // 如果提供了超时时间且组件加载也超时了，
+  // 则使用加载失败时使用的组件。默认值是：`Infinity`
+  timeout: 3000
+})
+处理边界情况
+
+一、Vue 基础知识之 Vue.extend
+vue.extend(options)
+使用vue来创建一个子类，参数是一个包含组件选项的对象。
+<div id="mount-point"></div>
+// 创建构造器
+var Profile = Vue.extend({
+  template: '<p>{{firstName}} {{lastName}} aka {{alias}}</p>',
+  data: function () {
+    return {
+      firstName: 'Walter',
+      lastName: 'White',
+      alias: 'Heisenberg'
+    }
+  }
+})
+// 创建 Profile 实例，并挂载到一个元素上。
+new Profile().$mount('#mount-point')
+
+结果如下：
+<p>Walter White aka Heisenberg</p>
+
+注意：extend创建的是vue构造器，而不是我们平时写的组件实例，所以不能通过new Vue({component:testExtend})来直接使用，
+需要通过new Profile().$mount('#mount-point')来挂载到指定的元素上。
+二、为什么使用extend
+在vue项目中，我们有了初始化的根实例后，所有页面基本上由router来管理，组件也是通过import来进行局部注册。
+所以组件的创建我们不需要去关注，但是这样做会有几个缺点：
+1、组件模板都是事先定义好的，我们要从接口动态渲染组件怎么办？
+2、所有内容都是在#app下渲染，注册组件都是在当前位置渲染。如果我们要实现一个类似于window.alert()提示组件要求像调用js一样调用，该怎么办？
+三、简单示例
+import Vue from 'vue'
+
+const testComponent = Vue.extend({
+  template: '<div>{{ text }}</div>',
+  data: function () {
+    return {
+      text: 'extend test'
+    }
+  }
+})
+//然后我们将它手动渲染：
+const extendComponent = new testComponent().$mount()
+//这时候，我们就将组件渲染挂载到 body 节点上了。
+//我们可以通过 $el 属性来访问 extendComponent 组件实例：
+document.body.appendChild(extendComponent.$el)
+
+
+vue异步更新队列
+    Vue在更新DOM时是异步执行的，只要侦听到数据变化，vue将开启一个队列，并缓冲在同一事件循环中发生的所有数据变更。
+    如果一个watcher被多次触发，只会被推入到队列中一次。
+    然后在下一个事件循环tick中，vue刷新队列并执行实际（已去重）工作。vue在内部对异步队列尝试使用原生的promise.then、mutationObserve和setImmediate，如果执行环境不支持，则会采用setTimeout（fn，0）代替。、
+    nextTick----在下次dom更新循环结束之后执行延时回调。在修改数据后立即使用这个方法，获取更新后的dom
+vue安全
+    第一原则：永远不要使用不可信任的模板。
+    vue的安全措施
+    1、html内容
+    不论使用模板还是渲染函数，内容都会被自动转义。
+    '<script>alert("hi")</script>'会被转义为&lt;script&gt;alert(&quot;hi&quot;)&lt;/script&gt;
+    改转义通过textContent的浏览器原生api完成
+    所以除非浏览器本身存在安全漏洞，否则不会存在安全漏洞
+
+    动态 attribute 绑定也会自动被转义，因此避免了通过闭合title而注入新的任意HTML
+
+
+    要让div获取 焦点，必须加tabindex="0"的属性
+    curDom.one('blur', () => {
+            console.log('hahah')
+    }).attr("tabindex", '0').focus();
+
+js垃圾回收
+js的内存管理是自动的。js中主要的内存管理概念是可达性。
+这里列出固有的可达值得基本集合，这些值明显不能被释放，这些值被称为根。如果一个值可以通过引用或引用链从根访问任何其他值，则认为该值是可达的。
+    比如：当前函数的局部变量和参数
+    嵌套调用是，当前调用链上所有的函数的变量与参数
+    全局变量（还有一些内部的）
+内部算法：
+    垃圾回收器找到所有的根，以及它们的引用，以及引用的引用...,此过程中遍历到的对象都会被记住，以免将来再次遍历到同一个对象。
+    如此操作，直到所有的可达引用都被访问到
+    然后删除没有被标记的对象。
+算法中的一些优化点：
+    分代收集--对象被分为两组，新的和旧的。许多对象出现，完成他们的工作并很快死去，他们可以被很快清理。而那些长期存活的对象就会变得老旧，而被检查的频率也会减少。
+    增量收集--如果对象较多，那么在遍历并标记整个对象的时候会费时费力，造成延时。所以引擎会将垃圾回收工作分成几部分来做。然后将这几部分逐一进行处理。这需要他们之间有额外的标记来追踪变化。这样做大的延时就会变成小的延时。
+    闲时收集：垃圾回收器只会在cpu空闲的时候尝试进行，以减少可能对代码执行的影响。 
+
+mockjs
+    mockjs是一个模拟json数据的测试工具
+    安装mockjs
+    npm install mockjs --save-dev
+    新建mockjs
+    import Mock form "mockjs";
+		Mock.mock('/api/news', "get", {
+			'data|10': [
+				{
+					'id|+1': 1,
+					'title|+1': Mock.Random.cword(8, 20),
+					'image|+1': Mock.Random.image('200x100', Mock.Random.color()),
+					'date|+1': Mock.Random.date('yyyy-MM-dd')
+				}
+			]
+		});
+		导入mockjs
+		import "./js/mock.js";
+		$.ajax({
+			url: "/api/news",
+			type: "get",
+			dataType: "json",
+			success: function (res) {
+				console.log(res.news);
+			}
+		})
+		//模拟post请求,外层的Mock只负责拦截接口和方法的定义
+		Mock.mock('/api/addUser', 'post', function (option) {
+			//请求相关的参数
+			console.log(option)
+			//模拟假数据需要重新写Mock
+			return Mock.mock({
+				status: 200,
+				message: '@cword(4,9)'
+			})
+		})
+移动端布局及适配方式
+viewport使用
+<meta name="viewport" content="width=device-width,initial-scale=1.0, maximum-scale=1.0,user-scalable=no" />
+width：设置layout viewport 的宽度，为一个正整数，或字符串"device-width"
+initial-scale：设置页面的初始缩放值，为一个数字，可以带小数
+minimum-scale：允许用户的最小缩放值， 为一个数字，可以带小数
+maximum-scale：允许用户的最大缩放值，为一个数字，可以带小数
+height：设置layout viewport 的高度，这个属性对我们并不重要，很少使用
+user-scalable：是否允许用户进行缩放，值为"no"或"yes", no 代表不允许，yes代表允许
+
+format-detection使用
+// ios下会自动对数字和邮件做一些处理，这些是避免做处理的
+<meta name=“format-detection” content=“telephone=no,email=no,date=no,address=no” />
+telephone：电话
+eamil：邮箱
+date：日期
+address：地址
+
+禁止IE使用兼容性模式
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+
+移动端如何做适配？
+
+采用rem作为布局单位。
+
+什么是rem?
+
+rem是CSS3新增的相对长度单位，是指相对于根元素html的font-size计算值的大小。
+简单可理解为屏幕宽度的百分比。
+
+rem与em的区别？
+rem是针对根元素的html的font-size计算值大小计算的。
+em是根据父元素的font-size大小计算的。
+
+使用手淘flexible.js计算rem
+比如：750px设计稿，那么1rem=75px， div的高是50px ，50px换算成rem公式：
+50px/75px=0.7rem;
+
+解决1px细线问题
+问题出现原因：
+在retina（视网膜）屏上面， devicePixelRatio（物理像素）这个值是2或3， 所以1px长度映射到物理像素上就有2px或3px那么长。
+
+解决方案：
+
+viewport + rem 方案
+
+<meta name=“viewport” content=“initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no” /> 
+
+接下来的任务就是js的动态修改缩放比 以及 实现rem根元素字体大小的设置。
+
+var viewport = document.querySelector("meta[name=viewport]");
+if (window.devicePixelRatio == 1) { 
+     viewport.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no')
+ } 
+if (window.devicePixelRatio == 2) { 
+	     viewport.setAttribute('content', 'width=device-width, initial-scale=0.5, maximum-scale=0.5, minimum-scale=0.5, user-scalable=no') 
+} 
+if (window.devicePixelRatio == 3) { 
+     viewport.setAttribute('content', 'width=device-width, initial-scale=0.333333333, maximum-scale=0.333333333, minimum-scale=0.333333333, user-scalable=no') 
+} 
+var docEl = document.documentElement; 
+var fontsize = 10 * (docEl.clientWidth / 320) + 'px'; 
+docEl.style.fontSize = fontsize;
+
+面试解答：
+判断devicePixelRatio物理像素如果为1，设置viewport缩放大小为1，如果为2设置viewport缩放大小为0.5，如果为3设置viewport缩放大小为0.33….。
+
+vuex
+Vuex 是一个专为 Vue.js 应用程序开发的状态管理模式。将数据分发给各个组件，异步数据流，统一封装接口。
+应用场景比如：购物车、会员登录等需要跨页面，跨组件实时传递数据的地方
+安装
+npm install --save vuex
+//导入vuex
+import Vuex from 'vuex'
+//启用vuex
+Vue.use(Vuex)
+//实例化对象
+let store=new Vuex.Store({
+    state:{}//初始化数据
+    mutations:{}//同步操作方法
+    actions:{}//异步操作，用于操作mutations里面的方法，如果mutations里面的方法操作量大最好写在actions里面。    
+    getters:{}//有时候我们需要从 store 中的 state 中派生出一些状态，例如对列表进行过滤并计数
+})
+new Vue({
+  el: '#app',
+  router,
+  store,//挂载到vue里使用
+  components: { App },
+  template: '<App/>'
+})
+
+具体使用
+//state：定义vuex的数据源
+state: {
+	total:0,
+		users: [
+			{ id: 1, name: "张三", age: 18 },
+			{ id: 2, name: "李四", age: 20 },
+			{ id: 3, name: "王五", age: 22 },
+			{ id: 4, name: "赵六", age: 25 }
+		]
+}
+页面调用方式一：
+this.$store.state.count
+页面调用方式二：
+使用辅助函数
+//方式一：
+import { mapState } from 'vuex'
+computed:{
+	...mapState(['total'])
+}
+//方式二：
+import { mapState } from 'vuex'
+computed:{
+	...mapState({total:"total"})
+}
+
+
+this.$forceUpdate() 可以进行强制更新
+this.$set 只适用于对象新加key，如果key值已存在，只会更新数据，不会更新视图
+
+HTMLDOM教程
+    HTML DOM 定义了访问和操作 HTML 文档的标准方法，DOM 以树结构表达 HTML 文档
+1、HTML方法
+getElementById()，返回带有指定id的元素
+    document.getElementById("intro");
+getElementsByTagName()	返回包含带有指定标签名称的所有元素的节点列表（集合/节点数组）。
+    document.getElementsByTagName("p")：下面的例子返回包含文档中所有 <p> 元素的列表
+getElementsByClassName()	返回包含带有指定类名的所有元素的节点列表。
+    document.getElementsByClassName("intro");  返回包含 class="intro" 的所有元素的一个列表
+
+appendChild(node) - 插入新的子节点（元素）
+removeChild(node) - 删除子节点（元素）
+    parent.removeChild(child);
+    child.parentNode.removeChild(child);
+replaceChild() 替换子节点。
+    var parent=document.getElementById("div1");
+    var child=document.getElementById("p1");
+    var para=document.createElement("p");
+    var node=document.createTextNode("这是一个新的段落。");
+    para.appendChild(node);
+    parent.replaceChild(para,child);
+insertBefore() 在指定的子节点前面插入新的子节点。
+    var para=document.createElement("p");
+    var node=document.createTextNode("这是一个新段落。");
+    para.appendChild(node);
+    
+    var element=document.getElementById("div1");
+    var child=document.getElementById("p1");
+    element.insertBefore(para,child);
+
+innerHTML - 获取或改变任意 HTML 元素
+        document.getElementById("p1").innerHTML="新文本!";
+parentNode - 节点（元素）的父节点
+childNodes - 节点（元素）的子节点
+attributes - 节点（元素）的属性节点
+
+
+createAttribute()	创建属性节点。
+createElement()	创建元素节点。
+createTextNode()	创建文本节点。
+getAttribute()	返回指定的属性值。
+setAttribute()	把指定属性设置或修改为指定的值。
+2、HTML DOM属性
+改变样式
+document.getElementById("p2").style.color="blue";
+document.getElementById("p2").style.fontFamily="Arial";
+document.getElementById("p2").style.fontSize="larger";
+
+创建新的 HTML 元素
+var para=document.createElement("p");
+var node=document.createTextNode("这是一个新段落。");
+para.appendChild(node);
+var element=document.getElementById("div1");
+element.appendChild(para);
+3、事件
+<button onclick="displayDate()">点我</button>
+document.getElementById("myBtn").onclick=function(){displayDate()}
+
+当用户进入或离开页面时，会触发 onload 和 onunload 事件。
+onload 事件可用于检查访客的浏览器类型和版本，以便基于这些信息来加载不同版本的网页。
+onload 和 onunload 事件可用于处理 cookies。
+
+
+
+
+
+
+    
+
