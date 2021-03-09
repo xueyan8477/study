@@ -1,0 +1,538 @@
+white-space: pre-wrap;//保留空白符序列，但正常的进行换行
+word-break: break-all;//允许在单词内换行
+
+vuex
+1、介绍
+    Vuex 是一个专为 Vue.js 应用程序开发的状态管理模式。将数据分发给各个组件，异步数据流，统一封装接口。
+    应用场景比如：购物车、会员登录等需要跨页面，跨组件实时传递数据的地方。
+2、安装vuex
+npm install --save vuex
+3、使用vuex
+//导入vuex
+import Vuex from 'vuex'
+//启用vuex
+Vue.use(Vuex)
+//实例化对象
+let store=new Vuex.Store({
+	state:{}//初始化数据
+	mutations:{}//同步操作方法
+	actions:{}//异步操作，用于操作mutations里面的方法，如果mutations里面的方法操作量大最好写在actions里面。    
+	getters:{}//有时候我们需要从 store 中的 state 中派生出一些状态，例如对列表进行过滤并计数
+})
+new Vue({
+  el: '#app',
+  router,
+  store,//挂载到vue里使用
+  components: { App },
+  template: '<App/>'
+})
+
+4、state：定义vuex的数据源。
+state: {
+	total:0,
+	users: [
+		{ id:1, name:"张三", age:18},
+		{ id:2, name:"李四", age:20},
+		{ id:3, name:"王五", age:22},
+		{ id:4, name:"赵六", age:25}
+	] 
+}
+5、页面调用
+方式一：
+this.$store.state.count
+方式二：
+使用辅助函数
+	方式一：
+	import { mapState } from 'vuex'
+	computed:{
+		...mapState(['total'])
+	}
+	方式二：
+	import { mapState } from 'vuex'
+	computed:{
+		...mapState({total:"total"})
+	}
+	方式三：
+	import { mapState } from 'vuex'
+	computed:{
+		...mapState({total:state=>state.total})
+	}
+
+6、mutations
+同步方式的方法提交，将改变的值赋给state数据源
+mutations:{
+	increment(state,payload){  
+		state.total = payload.count;
+	}
+}
+this.$store.commit("increment",{count:10});
+	辅助函数提交
+	import { mapMutations } from 'vuex’
+	methods: {
+     //方式一
+    ...mapMutations([
+          'increment', // 将 `this.increment()` 映射为 `this.$store.commit('increment')`
+    ]),
+   	//方式二
+    ...mapMutations({
+         add: 'increment' // 将 `this.add()` 映射为 `this.$store.commit('increment')`
+    })
+  }
+7、actions：异步方式的方法提交，用于操作mutions里面的方法，实际应用里面获取ajax异步数据
+	actions:{
+		inc(conText,payload){
+			conText.commit("increment",payload);
+		}
+	}
+	this.$store.dispatch(“increment”,{count:10});
+	辅助函数提交
+	import { mapActions } from 'vuex’
+	methods: {
+     //方式一
+    ... mapActions ([
+          'increment', // 将 `this.increment()` 映射为 `this.$store.dispatch('increment')`
+    ]),
+   //方式二
+    ... mapActions ({
+         add: 'increment' // 将 `this.add()` 映射为 `this.$store.dispatch('increment')`
+    })
+  }
+8、gettters ：可以认为是 store 的计算属性，类似于computed，例如对列表进行过滤并计数。
+	getters:{
+		getUsers(state){
+		  let aUsers=state.users.filter((res)=>{
+		    return res.age>18;
+	  })
+	  return aUsers;
+	}}
+	this.$store.getters.getUsers
+	辅助函数
+	import {mapGetters} from 'vuex’
+	computed: {
+	//方式一
+	...mapGetters([
+		'getUsers'
+	]),
+	//方式二
+	...mapGetters({
+			getUsers:'getUsers'
+		})
+	}
+9、modules：将 store 分割成模块（module）。每个模块拥有自己的 state、mutation、action、getter。
+		const moduleA = {
+		namespaced:true,//命名空间
+			state: { ... },
+			mutations: { ... },
+			actions: { ... },
+			getters: { ... }
+		}
+		const moduleB = {
+			state: { ... },
+			mutations: { ... },
+			actions: { ... }
+		}
+		const store = new Vuex.Store({
+			modules: {
+				a: moduleA,
+				b: moduleB
+			}
+		})
+		store.state.a // -> moduleA 的状态
+		store.state.b // -> moduleB 的状态
+
+vue-router路由
+	//安装最新版本
+	npm install --save vue-router
+	//安装指定版本
+	npm install --save vue-router@3.0.3
+
+1、建立一个router.js文件，代码如下：
+
+	import Vue from 'vue';
+	import Router from 'vue-router';//引用路由
+	import HomePage from './pages/index';
+
+	Vue.use(Router);//装载路由
+
+	//路由实例化
+	let router=new Router({
+	mode:"hash", //1、hash哈希：有#号。2、history历史：没有#号
+	base: process.env.BASE_URL,//自动获取根目录路径
+	routes:[
+		{
+				path:"/",
+				name:"index",
+				component:HomePage
+		},
+		{
+			path:'/news',
+			name:"news",
+			component:()=>import("./pages/news")//路由懒加载
+		},
+  ]
+});
+
+export default router;
+
+main.js里面的代码
+
+import router from './router'
+new Vue({
+  router,
+  render: h => h(App)
+}).$mount('#app')
+
+App.vue里面的代码
+
+<template>
+  <div>
+    <router-view/>
+  </div>
+</template>
+
+2、动态路由
+routes:[
+	{
+		path: '/news/:id',
+		name: 'news',
+		component: () => import('./views/News.vue'),
+	}，
+]
+<router-link to=“/news/10">新闻页面</router-link>
+
+动态路由与接收参数
+
+路由跳转方式一：
+<router-link to=“/about">About</router-link>
+路由跳转方式二：
+this.$router.push({path:"/about"})
+push进入跳转历史记录
+路由跳转方式三：
+this.$router.replace({path:"/about"})
+replace不进入跳转历史记录
+
+路由传参方式一：
+<router-link to="/about?id=10">About</router-link>
+路由传参方式二：
+this.$router.push({name:"about",params:{id:10}})
+params：参数不显示url地址上
+路由传参方式三（推荐）：
+this.$router.push({path:"/about",query:{id:10}})
+query：参数显示在地址上
+
+接收参数方式一：
+this.$route.params.id
+接收参数方式二（推荐）：
+this.$route.query.id
+返回上一级：
+this.$router.go(-1)
+
+3、主路由与子路由（路由嵌套）
+let a = {
+	path: "/goods",
+	component: () => import("./views/goods.vue"),
+	redirect: "/goods/info",//页面重定向
+	children: [//子路由
+		{
+			path: "info",
+			component: () => import("./views/goods_info.vue")
+		},
+		{
+			path: "/user/profile",
+			component: () => import("./user/profile.vue"),
+			meta: { title: '个人资料', auth: true }
+		}
+	]
+}
+//auth:true表示这个页面需要进行会员认证，auth就是一个标识。
+
+4、路由守卫
+// beforeEach：全局前置守卫
+
+const router = new VueRouter({})
+
+router.beforeEach(function (to, from, next) {
+	if (to.meta.auth) {
+		if (Boolean(store.state.isLogin) == true) {//已登录     
+			next();
+		} else {//未登录      
+			next({ "/login/index"});
+		}
+	} else {
+		next()
+	}
+});
+
+// beforeEnter：路由独享的守卫(路由内钩子)
+const router = new VueRouter({
+	routes: [
+		{
+			path: '/foo',
+			component: Foo,
+			beforeEnter: (to, from, next) => { }
+		}
+	]
+})
+
+// 组件内的守卫（组件内钩子）
+beforeRouteEnter (to, from, next) {
+	// 在渲染该组件的对应路由被 confirm 前调用 
+	// 不！能！获取组件实例 `this` 
+	// 因为当守卫执行前，组件实例还没被创建 
+},
+beforeRouteUpdate (to, from, next) {
+	// 在当前路由改变，但是该组件被复用时调用
+	 // 举例来说，对于一个带有动态参数的路径 /foo/:id，在 /foo/1 和 /foo/2 之间跳转的时候， 
+	// 由于会渲染同样的 Foo 组件，因此组件实例会被复用。而这个钩子就会在这个情况下被调用。
+	 // 可以访问组件实例 `this` 
+}, 
+beforeRouteLeave (to, from, next) {
+	// 导航离开该组件的对应路由时调用 // 可以访问组件实例 `this`
+}
+应用场景
+组件内的守卫(组件内钩子)在实际的开发过程中使用较少, 在实际的项目中beforeRouteLeave还算有用, 使用场景分别为一下三类情况:
+(一) 清除当前组件中的定时器
+当一个组件中有一个定时器时, 在路由进行切换的时候, 可使用beforeRouteLeave将定时器进行清楚, 以免占用内存（可以用destroyed生命周期钩子函数代替）:
+beforeRouteLeave (to, from, next) {
+ window.clearInterval(this.timer) //清楚定时器
+ next()
+}
+(二) 当页面中有未关闭的窗口, 或未保存的内容时, 阻止页面跳转
+如果页面内有重要的信息需要用户保存后才能进行跳转, 或者有弹出框的情况. 应该阻止用户跳转。
+beforeRouteLeave(to, from, next) {
+	if (this.isShow) {
+		alert('必须关闭弹窗才能跳转页面');
+		next(false);
+	} else {
+		next();
+	}
+}
+(三) 保存相关内容到Vuex中或Session中
+当用户需要跳转页面时, 可以将公用的信息保存到session或Vuex中（可以用destroyed生命周期钩子函数代替）。
+beforeRouteLeave (to, from, next) {
+  localStorage.setItem(name, content); //保存到localStorage中
+  next()
+}
+
+history与hash模式的区别
+hash模式：路由地址带#号。适合做后台管理系统
+history模式：路由地址不带#号。适合做前端宣传页面。但是history模式有个问题就是刷新页面会出现404错误，解决方法需要配置服务器。
+apache解决方案：
+在根目录下新建.htaccess文件，内容如下：
+<IfModule mod_rewrite.c> 
+Options Indexes FollowSymLinks ExecCGI 
+RewriteEngine On  
+RewriteBase  /  
+RewriteRule ^index\.html$ - [L]  
+RewriteCond %{REQUEST_FILENAME} !-f  
+RewriteCond %{REQUEST_FILENAME} !-d  
+RewriteRule . /index.html [L]    
+</IfModule>
+
+nginx解决方案：
+location  / {
+	try_files $uri $uri/ /index.html;
+}
+
+三、开发环境配置
+1、使用vue-cli3.0初始化vue
+安装vue脚手架
+npm install -g @vue/cli
+卸载vue脚手架
+npm uninstall vue-cli -g 
+查看版本号
+vue -V
+帮助创建项目
+vue --help
+创建项目
+vue create 项目名称
+安装第三方插件
+vue add axios
+2、运行生成环境的文件
+	1、安装serve服务器
+	npm install -g serve
+	2、运行方式一：
+	serve -s dist
+	运行方式二：
+	cd dist
+	serve
+3、.env配置全局变量和区分开发者环境和生产环境
+	全局变量
+	在根目录下面创建.env文件
+	内容：
+	VUE_APP_URL=http://vueshop.glbuys.com
+	注意命名规范：必须VUE_APP_开头
+	开发者全局变量
+	在根目录下创建.env.development文件
+	内容
+	VUE_APP_URL="http://vueshop.glbuys.com/api"
+
+	生产环境全局变量
+	在根目录下创建.env.production文件
+	内容
+	VUE_APP_URL="https://vueshop.glbuys.com/api"
+	读取值：
+	process.env.VUE_APP_URL
+4、vue.config.js的配置
+	根目录建立vue.config.js
+	在module.exports={}里面配置
+	1、配置根目录
+	publicPath:'/’
+	2、构建输出目录
+	outputDir:'dist'
+	3、 静态资源目录（js,css,image）
+	assetsDir:"assets"
+	4、是否开启eslint检测
+	lintOnSave:false //false不开启，有效值：true || false
+	productionSourceMap: false,//生成环境下面开启sourceMap支持断点调试
+
+	服务器配置：
+	devServer:{
+	open:false, //是否启动打开浏览器
+	host:"localhost",//主机，0.0.0.0支持局域网地址，可以用真机测试
+	port:8080, //端口
+	https:false,//是否启动https
+	//配置跨域代理
+	proxy:{
+				"/api":{
+				target:"http://vueshop.glbuys.com/api",
+				changeOrigin:true,
+				pathRewrite:{
+						'^/api':""
+				}
+				}
+		}
+	}
+	configureWebpack:{
+	devtool: 'source-map' //配置开发者环境的sourceMap用于断点调试
+}
+四、eslint的配置
+在package.json里面添加
+"eslintConfig": {
+    "root": true, //此项是用来告诉eslint找当前配置文件不能往父级查找
+    "env": {
+      "node": true //此项指定环境的全局变量，下面的配置指定为node环境
+    },
+    "extends": [// 此项是用来配置vue.js风格，就是说写代码的时候要规范的写
+      "plugin:vue/essential",
+      "eslint:recommended"
+    ],
+    "rules": {//规则配置写在这里
+      "semi": ["error", "always"],
+      "no-plusplus": ["error", { "allowForLoopAfterthoughts": true }]
+    },
+    "parserOptions": {
+      "parser": "babel-eslint"//此项是用来指定eslint解析器的，解析器必须符合规则，babel-eslint解析器是对babel解析器的包装使其与ESLint解析    }
+
+最常用的两个命令：
+/*eslint-disable*/ 禁用eslint检测
+/*eslint-enable*/ 开启eslint检测
+
+五：自定义封装组件
+注册组件
+export default{
+	 install(Vue){
+		 Vue.component("my-button",Button);
+	}
+}
+
+使用组件
+import Vue from 'vue';
+import Button from '../components/button’
+Vue.use(Button)
+
+1、axios的介绍
+	axios是一款基于promise封装的库，可以运行在浏览器端和node环境中。
+	1、get请求
+	2、post请求
+	3、使用URLSearchParams或qs做post提交处理
+	3、图片上传
+
+2、使用URLSearchParams兼容IE
+	1、安装url-search-params-polyfill
+	npm install url-search-params-polyfill --save
+	2、入口页面导入url-search-params-polyfill
+	import 'url-search-params-polyfill';
+
+3、fetch的使用
+安装:npm install whatwg-fetch --save
+引入：import fetch from 'whatwg-fetch'
+	1、get请求
+	2、post请求
+	3、使用URLSearchParams或qs做post提交处理
+	3、图片上传
+
+	fetch的get使用
+	fetch("/api/v1/news",{
+   method:"get"
+	}).then((res)=>{
+			return res.json();
+	}).then(res=>{
+			this.newsList=res.data;
+	});
+
+	fetch的post使用
+	fetch("/proxy/home/user/pwdlogin?token=1ec949a15fb709370f",{
+		method:"post",
+			headers:{
+						'Content-Type':"application/x-www-form-urlencoded"
+				},
+			body:"cellphone="+encodeURIComponent(this.username)+"&password="+encodeURIComponent(this.password)+""
+			}).then(res=>res.json()).then(res=>{
+			console.log(res);
+})
+
+fetch的文件上传
+
+let data=new FormData();
+data.append("headfile",this.$refs["head"].files[0]);
+fetch("/proxy/user/myinfo/formdatahead?token=1ec949a15fb709370f",{
+       method:"post",
+        body:data
+}).then(res=>res.json()).then(res=>{
+       console.log(res);
+});
+
+3、vue-i18n国际化
+
+安装vue-i18n
+npm install --save vue-i18n
+
+使用vue-i18n
+main.js里面
+import VueI18n from 'vue-i18n'
+Vue.use(VueI18n)
+const i18n = new VueI18n({
+  locale: 'cn',
+  messages:{
+    'cn': require('./common/lang/cn.js'),
+    'en': require('./common/lang/en.js')
+  }
+})
+
+new Vue({
+  el: '#app',
+  i18n,
+  router,
+  components: { App },
+  template: '<App/>'
+})
+
+app.vue里面
+<template>
+<div>
+  <div>{{ $t("sidebar.MyWallet") }}</div>
+  <button @click="tag()">切换</button>
+</div>
+</template>
+
+export default {
+  methods:{
+    tag () {
+      if (this.$i18n.locale === 'en') {
+          this.$i18n.locale = 'cn'
+      } else {
+          this.$i18n.locale = 'en'
+      }
+    }
+  }
