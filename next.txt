@@ -1036,3 +1036,403 @@ npm install --save-dev react-router-dom
 引入路由和配置路由
 /*router.js 页面里的代码
 HashRouter:有#号
+BrowserRouter:没有#号
+Route：设置路由与组件关联
+Switch:只要匹配到一个地址不往下匹配，相当于for循环里面的break
+Link:跳转页面，相当于vue里面的router-link
+exact :完全匹配路由
+Redirect:路由重定向
+*/
+import { HashRouter as Router, Route, Switch, Link } from 'react-router-dom';
+import IndexComponent from './index/index';
+import NewsComponent from './news/index';
+render(){
+  return (
+    <React.Fragment>
+      <Router>
+        <React.Fragment>
+          <Switch>
+            <Route path="/" exact component={IndexComponent}></Route>
+            <Route path="/news" component={NewsComponent}></Route>
+          </Switch>
+        </React.Fragment>
+      </Router>
+    </React.Fragment>
+  )
+}
+
+路由跳转
+
+// news / index.js里面的代码
+
+import React from "react";
+import { Link } from 'react-router-dom';
+export default class NewsComponent extends React.Component {
+  pushPage() {
+    //进入到history里面
+    this.props.history.push(
+      {
+        pathname: '/news/details',
+        search: '?id=3',
+        query: {
+          id: 3
+        }
+      }
+    )
+  }
+  //不进入history里面
+  replacePage() {
+    this.props.history.replace(
+      {
+        pathname: '/news/details',
+        search: '?id=4',
+        query: {
+          id: 4
+        }
+      }
+    )
+  }
+  render() {
+    return (
+      <div>我是新闻页面
+        <ul>
+          <li><Link to='/news/details/1'>新闻头条1</Link></li>
+          <li><Link to='/news/details/2'>新闻头条2</Link></li>
+          <li onClick={this.pushPage.bind(this)} >新闻头条3</li>
+          <li onClick={this.replacePage.bind(this)} >新闻头条4</li>
+        </ul>
+      </div>
+    )
+  }
+}
+// router.js 页面里的代码
+import NewsDetailsComponent from './news/details';
+// :id是第一个参数
+<Route path="/news/details/:id" component={NewsDetailsComponent}></Route>
+
+路由接收参数
+// news/details.js 页面里的代码
+// 接收参数方案一：
+// 如果路由的path= '/news/details/:id'用以下方式接收参数：
+this.props.match.params.id
+
+// 接收参数方案二：
+// 接收pushPage ()方法传过来的值
+this.props.location.query.id //这个接收方式看似很好，但是页面不能刷新，如果刷新便找不到id
+
+// 接收参数方案三：利用自定义函数来接收：
+function localParam(search, hash) {
+  search = search || window.location.search;
+  hash = hash || window.location.hash;
+  var fn = function (str, reg) {
+    if (str) {
+      var data = {};
+      str.replace(reg, function ($0, $1, $2, $3) {
+        data[$1] = $3;
+      });
+      return data;
+    }
+  };
+  return {
+    search: fn(search, new RegExp("([^?=&]+)(=([^&]*))?", "g")) || {},
+    hash: fn(hash, new RegExp("([^#=&]+)(=([^&]*))?", "g")) || {}
+  };
+  // 使用方法：
+  var get = localParam(this.props.location.search);
+  var id = get.search.id; console.log(id);
+  //返回
+  this.props.history.goBack();
+
+路由懒加载方式二：lazy和suspense实现路由懒加载
+// 1、导入lazy和Suspense
+import React, { lazy, Suspense } from 'react'
+const MainPage = lazy(() => import("./pages/home/main/index"));
+const GoodsPage = lazy(() => import("./pages/home/main/index"));
+// 2、用Suspense包裹Route
+<Suspense fallback={<div></div>}>
+  <Route path={base.config.path + "home"} component={MainPage}></Route>
+  <Route path={base.config.path + "goods"} component={GoodsPage}></Route>
+  <Redirect to={base.config.path + "home"}></Redirect>
+</Suspense>
+
+react-router-dom路由
+路由嵌套（子路由）
+// 在goods / index.js里面的代码
+import React from "react";
+import { Route, Switch } from 'react-router-dom';
+import GoodsInfoComponent from './goods_info';
+export default class GoodsIndexComponent extends React.Component {
+  goPage(pUrl) {
+    this.props.history.push(pUrl)
+  }
+  render() {
+    return (
+      <div>
+        <ul>
+          <li onClick={this.goPage.bind(this, '/goods/goods_info')}>商品</li>
+          <li>详情</li>
+          <li>平价</li>
+        </ul>
+        <div>
+          <Switch>
+            <Route path='/goods/goods_info' component={GoodsInfoComponent}></Route>
+          </Switch>
+        </div>
+      </div>
+    )
+  }
+}
+// 在goods/goods_info.js里面的代码
+import React from "react";
+export default class GoodsInfoComponent extends React.Component {
+  render() {
+    return (
+      <div>
+        商品信息
+      </div>
+    )
+  }
+}
+
+withRouter 实现子组件路由跳转
+在common / header.js里面的代码
+import React from "react";
+import { withRouter } from 'react-router-dom';
+class HeaderComponent extends React.Component {
+  goPage(pUrl) {
+    this.props.history.goBack();
+  }
+  render() {
+    return (
+      <div style={{ width: '100%', height: '50px', background: "#0000FF", fontSize: '16px', color: '#FFFFFF' }}>
+        我是HeaderComponent&nbsp;&nbsp;
+        <span onClick={this.goPage.bind(this, '/goods')}>商品详情</span>
+      </div>
+    );
+  }
+} export default withRouter(HeaderComponent);
+
+路由认证
+// 在router.js里面的代码
+//自己制作的会员认证路由
+import { AuthRoute } from './routes/private';
+<AuthRoute path="/user/profile" component={UserProfileComponent}></AuthRoute>
+// 在routes / private.js里面的代码
+import React from 'react';
+import { Route, Redirect } from 'react-router-dom';
+export function AuthRoute({ component: Component, ...rest }) {
+  return (
+    <Route {...rest} render={props =>
+      Boolean(localStorage['isLogin']) ? (
+        <Component {...props} />
+      ) : (
+          <Redirect
+            to={{
+              pathname: "/login",
+              state: { from: props.location }
+            }}
+          />
+        )
+    }
+    />
+  );
+}
+
+第六章：redux的使用
+redux的介绍和安装
+Redux 是 JavaScript 状态容器，提供可预测化的状态管理。相当于vue的vuex，可以跨组件、跨页面推送数据。应用场景如：购物车、会员登录等功能模块。
+Redux 由 Flux 演变而来，避开了 Flux 的复杂性。 不管你有没有使用过它们，只需几分钟就能上手 Redux。
+
+Redux 的基本思想是整个应用的 state 保持在一个单一的 store 中。store 就是一个简单的 javascript 对象，而改变应用 state 的唯一方式是在应用中触发 actions，然后为这些 actions 编写 reducers 来修改 state。整个 state 转化是在 reducers 中完成，并且不应该有任何副作用。
+
+在react中使用redux实现计数器和会员登录
+选购商品
+商品装车
+存入仓库
+从仓库获取商品
+// counter.js里面的代码
+import React from 'react';
+import ComponentCounter from './components/home/index/counter';//子组件用来测试redux获取值
+import { connect } from 'react-redux';
+
+class Counter extends React.Component {
+  constructor() {
+    super();
+    this.state = {
+    }
+  }
+  componentWillMount() {
+    this.iAmount = 0;
+    console.log(this.iAmount)
+  }
+  setCounter(type) {
+    //将值传递给root.js里面的counterReducer（1、选购商品）
+    this.props.dispatch({ type: type, amount: this.iAmount++ });
+  }
+  render() {
+    return (
+      <div>
+        <ComponentCounter />
+        {/*接收redux的值（4、从仓库获取商品）*/}
+        <p>{this.props.state.Counter.number}</p>
+        <input id="decBtn" type="button" value='-' onClick={this.setCounter.bind(this, "DECREASE")} />&nbsp;&nbsp;&nbsp;<input id="incBtn" type="button" value='+' onClick={this.setCounter.bind(this, "INCREASE")} />
+      </div>
+    );
+  };
+}
+//将组件与redux连接
+export default connect((state) => {
+  return {
+    state: state
+  }
+})(Counter);
+
+// index.js里面的代码：
+import React from'react';
+import ReactDOM from 'react - dom';
+import { createStore, combineReducers } from 'redux';
+import { Provider } from 'react-redux';
+import ComponentIndex from './index';
+import { HashRouter as Router, Route, Switch } from 'react-router-dom';
+
+//获取index.js里面dispatch的值(2、商品装车)
+function counterReducer(state = { number: 0 }, action) {
+  switch (action.type) {
+    case 'INCREASE':
+      return { number: state.number + action.amount };
+      break;
+    case 'DECREASE':
+      return { number: state.number - action.amount };
+      break;
+    default:
+      return state
+  }
+}
+//存储到reducers里面
+let reducers = combineReducers({
+  Counter: counterReducer
+});
+//3、将reducers存储到仓库
+const store = createStore(reducers);
+//console.log(store);
+class Root extends React.Component {
+  render() {
+    return (
+      <div>
+        {/*将仓库的值分配到所有组件*/}
+        <Provider store={store}>
+          <ComponentIndex />
+        </Provider>
+      </div>
+    );
+  }
+}
+ReactDOM.render(<Root />, document.getElementById("app"));
+
+redux-thunk 中间件的使用解决dispatch性能的问题
+redux-thunk 则可以用来延迟 action 的派发(dispatch)，这可以处理异步 action 的派发(dispatch)。
+
+import { createStore, combineReducers, applyMiddleware } from "redux";
+import thunk from 'redux - thunk';//导入redux-thunk
+function counterReducer(state = { count: 1 }, action) {
+  switch (action.type) {
+    case "inc":
+      return Object.assign({}, state, action.data);
+    case "dec":
+      return Object.assign({}, state, action.data);
+    default:
+      return state;
+  }
+}
+let reducers = combineReducers({
+  counter: counterReducer
+})
+let store = createStore(reducers, applyMiddleware(thunk)); //使用react-thunk
+class Index extends React.Component {
+  render() {
+    return (
+      <React.Fragment>
+        <Provider store={store}>
+          <RouterComponent></RouterComponent>
+        </Provider>
+      </React.Fragment>
+    )
+  };
+}
+ReactDOM.render(<Index />, document.getElementById('root'));
+// 使用thunk的dispatch：
+//用thunk中间件
+this.props.dispatch((dispatch, getState) => {
+  //获取所有的state
+  //console.log(getState());
+  dispatch({ type: "inc", data: { count: ++this.count } })
+})
+
+http-proxy-middleware解决跨域
+// 1、在src下面建立setupProxy.js
+
+// 2、写入代码如下：
+const proxy = require('http-proxy-middleware');
+
+module.exports = function (app) {
+  app.use(proxy('/api', {
+    target: 'http://vueshop.glbuys.com/api',
+    changeOrigin: true,//是否跨域，如果target是域名则需要配置，如果是ip地址不需要
+
+    pathRewrite: {
+      "^/api": "" // 把/api 变成空
+    }
+  }));
+  // app.use(proxy('/test', { target: 'http://localhost:3000' }));
+  // 省略...
+};
+
+redux-saga中间件
+
+redux-saga的介绍
+redux-saga 是一个用于管理应用程序 Side Effect（副作用，例如异步获取数据，访问浏览器缓存等）的 library，它的目标是让副作用管理更容易，执行更高效，测试更简单，在处理故障时更容易。
+redux-saga 使用了 ES6 的 Generator 功能，让异步的流程更易于读取，写入和测试。
+
+// Effect提供的具体方法：
+import { take, call, put, select, fork, takeEvery, takeLatest } from 'redux-saga/effects'
+// take：是用来并发监听action，返回的是监听到的action对象 。
+while (true) {
+  let payload = yield take('LOGIN'); //监听dispatch里面的type
+  yield put({ type: "login", data: payload.data });
+}
+// call：call方法与js中的call相似, call方法调用函数，参数为args，返回一个描述对象。通常用来异步请求数据。
+while (true) {
+  let action = yield take('SWIPER');
+  let payload = yield call(getSwiperData); //异步请求数据
+  let data = {};
+  if (payload.code == 200) {
+    data = { swiper: payload.data };
+  } else {
+    data = { swiper: [] };
+  }
+  yield put({ type: "swiper", data: data });
+  if (action.data.success) {
+    action.data.success();
+  }
+} 
+
+// fork：fork方法与call相似,fork方法相当于web work，不会阻塞主线程，在非阻塞调用中十分有用 。
+export default [
+  fork(watchLogin),
+  fork(watchOutLogin),
+  fork(watchUploadHead)
+]
+
+// put：dispatch与reducer之前的桥梁，把处理后的数据传入到reducer中。
+yield put({ type: "out_login", data: { username: "", isLogin: false } });
+// select： select方法对应的是redux中的getState，用户获取store中的state
+let rootState = yield select(); console.log(rootState);
+// takeEvery：并发监听，相应的dispatch触发的动作并执行相应的方法 
+function* takeDecCount() {
+  //takeEvery:允许并发，监听dispatch里面的type
+  yield takeEvery("DEC", decCount);
+}
+
+// takeLatest ：不允许并发，监听相应的dispatch触发的动作并执行相应的方法 
+function* takeIncCount() {
+  //takeLatest:不允许并发，监听dispatch里面的type
