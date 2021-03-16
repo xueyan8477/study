@@ -1,726 +1,118 @@
-一、nodejs简介
-Node.js是一个事件驱动I/O服务端JavaScript环境，基于Google的V8引擎，V8引擎执行Javascript的速度非常快，性能非常好
-
-// 引入http模块，http是nodejs自带的模块
-var http = require('http');
-// 创建服务器
-http.createServer((request,response)=>{
-  //发送http头部
-  //HTTP状态值：200,：ok
-  response.writeHead(200,{'Content-type':'text/plain'});
-  response.end('hello world\n')
-}).listen(8888);
-console.log('Server running at http://127.0.0.1:8888/')
-
-node里存在大量的回调函数，可以处理大量的并发请求，回调函数一般作为函数的最后一个参数出现。
-
-Node.js 是单进程单线程应用程序，但是因为 V8 引擎提供的异步执行回调接口，通过这些接口可以处理大量的并发，所以性能非常高。
-Node.js 几乎每一个 API 都是支持回调函数的。
-Node.js 基本上所有的事件机制都是用设计模式中观察者模式实现。
-Node.js 单线程类似进入一个while(true)的事件循环，直到没有事件观察者退出，每个异步事件都生成一个事件观察者，如果有事件发生就调用该回调函数
-二、事件驱动模型
-Node.js 使用事件驱动模型，当web server接收到请求，就把它关闭然后进行处理，然后去服务下一个web请求。
-当这个请求完成，它被放回处理队列，当到达队列开头，这个结果被返回给用户。
-
-这个模型非常高效可扩展性非常强，因为 webserver 一直接受请求而不等待任何读写操作
-在事件驱动模型中，会生成一个主循环来监听事件，当检测到事件时触发回调函数
-
-nodejs中有多个内置事件，可以通过引入events模块，并通过实例化EventEmitter类来绑定和监听事件。
-//引入events模块
-var events = require('events');
-//创建eventEmitter对象
-var eventEmitter = new event.eventEmitter();
-//绑定事件及处理程序
-eventEmitter.on('eventName',eventHandler);
-//触发事件
-eventEmitter.emit('eventName')
-
-Node.js 所有的异步 I/O 操作在完成时都会发送一个事件到事件队列。
-许多对象都会分发事件：
-  net.Server对象会在每次有新连接时触发一个事件，一个fs.readStream对象会在文件被打开的时候触发一个事件，所有这些产生事件的对象都是events.eventEmitter的实例。即：net.Server对象和fs.readStream对象都是events.eventEmitter的实例
-1、EventEmitter类
-events 模块只提供了一个对象： events.EventEmitter。EventEmitter 的核心就是事件触发与事件监听器功能的封装。
-EventEmitter 对象如果在实例化时发生错误，会触发 error 事件。当添加新的监听器时，newListener 事件会触发，当监听器被移除时，removeListener 事件被触发。
-
-当注册多个相同的事件时
-
-var events = require('events'); 
-var emitter = new events.EventEmitter(); 
-emitter.on('someEvent', function(arg1, arg2) { 
-    console.log('listener1', arg1, arg2); 
-}); 
-emitter.on('someEvent', function(arg1, arg2) { 
-    console.log('listener2', arg1, arg2); 
-}); 
-emitter.emit('someEvent', 'arg1 参数', 'arg2 参数');
-
-当事件触发时，注册到这个事件的事件监听器被依次调用，事件参数作为回调函数参数传递。
-执行结果：
-listener1 arg1 参数 arg2 参数
-listener2 arg1 参数 arg2 参数
-2、EventEmitter类中的方法
---addListener(event, listener)/on(event, listener) 为指定事件注册一个监听器，接受一个字符串 event 和一个回调函数
-server.on('connection', function (stream) {
-  console.log('someone connected!');
-});
---once(event, listener)注册一个单次监听器,监听器最多只会触发一次，触发后立刻解除该监听器
---removeListener(event, listener)移除指定事件的某个监听器，监听器必须是该事件已经注册过的监听器（若第二个参数为匿名函数，则监听无法用此方法移除）
---removeAllListeners([event])移除所有事件的所有监听器， 如果指定事件，则移除指定事件的所有监听器
---setMaxListeners(n)默认情况下， EventEmitters 如果你添加的监听器超过 10 个就会输出警告信息。 setMaxListeners 函数用于提高监听器的默认限制的数量
---listeners(event)返回指定事件的监听器数组
---emit(event, [arg1], [arg2], [...])触发监听
-类方法（静态方法）：返回指定事件的监听器数量
-events.emitter.listenerCount(eventName) //推荐
-事件
-newListener该事件在添加新监听器时被触发
-removeListener从指定监听器数组中删除一个监听器时触发。需要注意的是，此操作将会改变处于被删监听器之后的那些监听器的索引
-
-error事件
-EventEmitter 定义了一个特殊的事件 error，它包含了错误的语义，我们在遇到 异常的时候通常会触发 error 事件。当添加新的监听器时，newListener当 error 被触发时，EventEmitter 规定如果没有响 应的监听器，Node.js 会把它当作异常，退出程序并输出错误信息。
-我们一般要为会触发 error 事件的对象设置监听器，避免遇到错误后整个程序崩溃
-
-继承EventEmitter
-大多数时候我们不会直接使用EventEmitter，而是在对象中继承它。包括fs，net，http在内。只要是支持事件响应的核心模块都是eventEmitter的子类。
-为什么要这样做呢？原因有两点：
-首先，具有某个实体功能的对象实现事件符合语义， 事件的监听和发生应该是一个对象的方法。
-其次 JavaScript 的对象机制是基于原型的，支持 部分多重继承，继承 EventEmitter 不会打乱对象原有的继承关系。
-三、buffer缓冲区
-js语言自身只有字符串数据类型 ，没有二进制数据类型。但在处理像TCP流或文件流时，必须使用到二进制数据。因此在 Node.js中，定义了一个 Buffer 类，该类用来创建一个专门存放二进制数据的缓存区。
-1、创建buffer类
-Buffer.alloc(size[,fill[,encoding]])返回一个指定大小的 Buffer 实例，如果没有设置 fill，则默认填满 0
-
-// 创建一个长度为 10、且用 0 填充的 Buffer。
-const buf1 = Buffer.alloc(10);
-
-Buffer.allocUnsafe(size)： 返回一个指定大小的 Buffer 实例，但是它不会被初始化，所以它可能包含敏感的数据
-
-// 创建一个长度为 10、且未初始化的 Buffer。
-// 这个方法比调用 Buffer.alloc() 更快，
-// 但返回的 Buffer 实例可能包含旧数据，
-// 因此需要使用 fill() 或 write() 重写。
-const buf3 = Buffer.allocUnsafe(10);
-
-Buffer.allocUnsafeSlow(size)
-
-Buffer.from(array)： 返回一个被 array 的值初始化的新的 Buffer 实例（传入的 array 的元素只能是数字，不然就会自动被 0 覆盖）
-
-// 创建一个包含 [0x1, 0x2, 0x3] 的 Buffer。
-const buf4 = Buffer.from([1, 2, 3]);
-
-Buffer.from(arrayBuffer[, byteOffset[, length]])： 返回一个新建的与给定的 ArrayBuffer 共享同一内存的 Buffer
-Buffer.from(buffer)： 复制传入的 Buffer 实例的数据，并返回一个新的 Buffer 实例
-Buffer.from(string[, encoding])： 返回一个被 string 的值初始化的新的 Buffer 实例
-
-
-// 创建一个包含 UTF-8 字节 [0x74, 0xc3, 0xa9, 0x73, 0x74] 的 Buffer。
-const buf5 = Buffer.from('tést');
-// 创建一个包含 Latin-1 字节 [0x74, 0xe9, 0x73, 0x74] 的 Buffer。
-const buf6 = Buffer.from('tést', 'latin1');
-2、写入缓冲区，返回实际写入的大小。如果 buffer 空间不足， 则只会写入部分字符串。
-buf.write(string[, offset[, length]][, encoding])
-string - 写入缓冲区的字符串。
-offset - 缓冲区开始写入的索引值，默认为 0 。
-length - 写入的字节数，默认为 buffer.length
-encoding - 使用的编码。默认为 'utf8' 。
-//实例
-buf = Buffer.alloc(256);
-len = buf.write("www.runoob.com");
-console.log("写入字节数 : "+  len);
-3、从缓冲区读取数据，解码缓冲区数据并使用指定的编码返回字符串
-buf.toString([encoding[, start[, end]]])
-encoding - 使用的编码。默认为 'utf8' 。
-start - 指定开始读取的索引位置，默认为 0。
-end - 结束位置，默认为缓冲区的末尾。
-4、将 Buffer 转换为 JSON 对象
-将nodeBuffer转化为json对象
-buf.toJSON()
-当字符串化一个 Buffer 实例时，JSON.stringify() 会隐式地调用该 toJSON()。
-
-const buf = Buffer.from([0x1, 0x2, 0x3, 0x4, 0x5]);
-const json = JSON.stringify(buf);
-
-// 输出: {"type":"Buffer","data":[1,2,3,4,5]}
-console.log(json);
-const copy = JSON.parse(json, (key, value) => {
-// key值的顺序为，buffer，1,2,3,4,5,[1,2,3,4,5],{ type: 'Buffer', data: [ 1, 2, 3, 4, 5 ] }
-// value值的顺序为，buffer，1,2,3,4,5,[1,2,3,4,5],{ type: 'Buffer', data: [ 1, 2, 3, 4, 5 ] }
-  return value && value.type === 'Buffer' ?
-    Buffer.from(value.data) :
-    value;
-});
-
-// 输出: <Buffer 01 02 03 04 05>
-console.log(copy);
-小插曲：json.parse(text[,reviver])
-  如果指定了reviver函数，则解析出的js值会被处理后返回。遍历顺序（从最里层的属性开始，一级一级往外，最终到达顶层，也就是解析值本身）
-  5、缓冲区合并
-  语法：Buffer.concat(list[, totalLength])
-  list用于合并的buffer对象数组列表，totalLength - 指定合并后Buffer对象的总长度
-  var buffer1 = Buffer.from(('菜鸟教程'));
-  var buffer2 = Buffer.from(('www.runoob.com'));
-  var buffer3 = Buffer.concat([buffer1,buffer2]);
-  console.log("buffer3 内容: " + buffer3.toString());
-  //buffer3 内容: 菜鸟教程www.runoob.co
-  6、缓冲区比较 
-  buf.compare(otherBuffer);   otherBuffer - 与 buf 对象比较的另外一个 Buffer 对象
-  var buffer1 = Buffer.from('ABC');
-var buffer2 = Buffer.from('ABCD');
-var result = buffer1.compare(buffer2);
-
-if(result < 0) {
-   console.log(buffer1 + " 在 " + buffer2 + "之前");
-}else if(result == 0){
-   console.log(buffer1 + " 与 " + buffer2 + "相同");
-}else {
-   console.log(buffer1 + " 在 " + buffer2 + "之后");
-} //ABC在ABCD之前
- 7、拷贝缓冲区
- 语法：buf.copy(targetBuffer[, targetStart[, sourceStart[, sourceEnd]]])
-  targetBuffer - 要拷贝的 Buffer 对象。
-  targetStart - 数字, 可选, 默认: 0
-  sourceStart - 数字, 可选, 默认: 0
-  sourceEnd - 数字, 可选, 默认: buffer.length
-  
-  var buf1 = Buffer.from('abcdefghijkl');
-  var buf2 = Buffer.from('RUNOOB');
-  //将 buf2 插入到 buf1 指定位置上
-  buf2.copy(buf1, 2);
-console.log(buf1.toString());//abRUNOOBijkl
-8、缓冲区裁剪
-buf.slice([start[, end]])
-start - 数字, 可选, 默认: 0
-end - 数字, 可选, 默认: buffer.length
-
-var buffer1 = Buffer.from('runoob');
-// 剪切缓冲区
-var buffer2 = buffer1.slice(0,2);
-console.log("buffer2 content: " + buffer2.toString()); //buffer2 content: ru
-9、缓冲区长度
-buf.length
-
-var buffer = Buffer.from('www.runoob.com');
-//  缓冲区长度
-console.log("buffer length: " + buffer.length);
-执行以上代码，输出结果为：
-buffer length: 14
-四：Stream（流）
-Stream是一个抽象接口，node中有很多对象实现了这个接口。对http 服务器发起请求的request 对象就是一个 Stream，还有stdout（标准输出）
-Stream 有四种流类型：
-  Readable - 可读操作。
-  Writable - 可写操作。
-  Duplex - 可读可写操作.
-  Transform - 操作被写入数据，然后读出结果。
-所有的 Stream 对象都是 EventEmitter 的实例。常用的事件有：
-  data - 当有数据可读时触发。
-  end - 没有更多的数据可读时触发。
-  error - 在接收和写入过程中发生错误时触发。
-  finish - 所有数据已被写入到底层系统时触发。
-  1、从流中读取数据
-  创建 input.txt 文件，内容如下：
-  菜鸟教程官网地址：www.runoob.com
-
-    var fs = require("fs");
-    var data = '';
-    //创建可读流
-    var readerStream = fs.createReadStream('input.txt');
-    // 设置编码为 utf8。
-    readerStream.setEncoding('UTF8');
-    // 处理流事件 --> data, end, and error
-    readerStream.on('data', function(chunk) {
-      data += chunk;
-    });
-    readerStream.on('end',function(){
-      console.log(data);
-    });
-    readerStream.on('error', function(err){
-      console.log(err.stack);
-    });
-    console.log("程序执行完毕");
-
-  2、写入流
-    var fs = require("fs");
-var data = '菜鸟教程官网地址：www.runoob.com';
-// 创建一个可以写入的流，写入到文件 output.txt 中
-var writerStream = fs.createWriteStream('output.txt');
-// 使用 utf8 编码写入数据
-writerStream.write(data,'UTF8');
-// 标记文件末尾
-writerStream.end();
-// 处理流事件 --> finish、error
-writerStream.on('finish', function() {
-    console.log("写入完成。");
-});
-writerStream.on('error', function(err){
-   console.log(err.stack);
-});
-console.log("程序执行完毕");
-以上程序会将 data 变量的数据写入到 output.txt 文件中。代码执行结果如下：
-$ node main.js 
-程序执行完毕
-写入完成。
-查看 output.txt 文件的内容：
-$ cat output.txt 
-菜鸟教程官网地址：www.runoob.com
-3、管道流（可以实现大文件的复制）
-设置 input.txt 文件内容如下：
-
-菜鸟教程官网地址：www.runoob.com
-管道流操作实例
-
-创建 main.js 文件, 代码如下：
-
-var fs = require("fs");
-// 创建一个可读流
-var readerStream = fs.createReadStream('input.txt');
-// 创建一个可写流
-var writerStream = fs.createWriteStream('output.txt');
-// 管道读写操作
-// 读取 input.txt 文件内容，并将内容写入到 output.txt 文件中
-readerStream.pipe(writerStream);
-console.log("程序执行完毕");
-代码执行结果如下：
-
-$ node main.js 
-程序执行完毕
-查看 output.txt 文件的内容：
-
-$ cat output.txt 
-菜鸟教程官网地址：www.runoob.com
-管道流操作实例
-4、链式流
-链式是通过连接输出流到另外一个流并创建多个流操作链的机制。链式流一般用于管道操作。
-接下来我们就是用管道和链式来压缩和解压文件。
-
-创建 compress.js 文件, 代码如下：
-
-var fs = require("fs");
-var zlib = require('zlib');
-
-// 压缩 input.txt 文件为 input.txt.gz
-fs.createReadStream('input.txt')
-  .pipe(zlib.createGzip())
-  .pipe(fs.createWriteStream('input.txt.gz'));
-  
-console.log("文件压缩完成。");
-代码执行结果如下：
-
-$ node compress.js 
-文件压缩完成。
-执行完以上操作后，我们可以看到当前目录下生成了 input.txt 的压缩文件 input.txt.gz。
-
-接下来，让我们来解压该文件，创建 decompress.js 文件，代码如下：
-
-var fs = require("fs");
-var zlib = require('zlib');
-
-// 解压 input.txt.gz 文件为 input.txt
-fs.createReadStream('input.txt.gz')
-  .pipe(zlib.createGunzip())
-  .pipe(fs.createWriteStream('input.txt'));
-  
-console.log("文件解压完成。");
-代码执行结果如下：
-
-$ node decompress.js 
-文件解压完成。
-五：Node.js模块系统
-一个 Node.js 文件就是一个模块，这个文件可能是JavaScript 代码、JSON 或者编译过的C/C++ 扩展
-
-创建一个 main.js 文件并引入 hello 模块
-var hello = require('./hello');
-hello.world();
-Node.js 提供了 exports 和 require 两个对象，其中 exports 是模块公开的接口，require 用于从外部获取一个模块的接口，即所获取模块的 exports 对象
-
-创建 hello.js 文件，代码如下：
-exports.world = function() {
-  console.log('Hello World');
+移动端布局方法
+1、响应式布局
+利用@media进行断点，在每个断点中编写css
+@media (max-width:1000px){
+    div{background:blue;}
 }
-此处见之前笔记。
-
-require内部加载逻辑
-在路径 Y 下执行 require(X) 语句执行顺序：
-  1、如果 X 是核心模块（例如：require("http")）
-　　1.1.返回该模块
-　　1.2.不再继续执行
-　2、如果X是以“./”、“/”或“../”开头
-　　2.1.把X当成文件，从指定路径开始，依次查找下面文件：X、X.js、X.json、X.node，
-    （将 X 作为 JavaScript 文本载入
-    将 X.js 作为 JavaScript 文本载入
-    解析 X.json 为 JavaScript 对象
-    X.node 作为二进制插件）
-    只要其中一个存在，就返回该文件，不再继续执行
-　　2.2.把X当成目录，从指定路径开始，依次查找下面文件：
-    X/package.json(查找main字段，并let M = X+(json main字段),将M作为参数，继续执行2.1，再执行M/index.js、M/index.json、M/index.node
-    X/index.js、
-    X/index.json、
-    X/index.node，
-    只要其中一个存在，就返回该文件，不再继续执行
-　3.如果 X 不是核心模块，也没有以“./”、“/”或“../”开头，则Nodejs会从当前模块的父目录开始，尝试从它的 /node_module 目录里加载模块，如果还是没有找到，则移动到再上一层父目录，直到文件系统的根目录
-　4.抛出“not found”
-2、缓存机制
-  缓存机制，任何模块只要被加载过一次，就会被缓存起来，第二次就直接从缓存中取
-  核心模块都保存在lib目录下
-  自定义模块时，不要和核心模块重名
-  require('./xxx') ./表示当前js文件所在的路径
-  当require加载一个模块时，会把一个模块中的代码都执行一遍
-六、Node.js函数
-和js一毛一样
-七、Node.js路由
-
-
-vue异步组件
-在大型应用中，我们可能需要将应用分割成小一些的代码块，并且只在需要的时候才从服务器加载一个模块。为了简化，Vue 允许你以一个工厂函数的方式定义你的组件，这个工厂函数会异步解析你的组件定义。Vue 只有在这个组件需要被渲染的时候才会触发该工厂函数，且会把结果缓存起来供未来重渲染
-例子:
-vue.component('async-example',function(resolve,reject)){
-  setTimeout(function(){
-    resolve({
-      template:'<div>I am async!</div>'
-    })
-  },1000)
+@media (min-width:1000px) and (max-width:1150px){
+    div{background: yellow;}
 }
-也可以调用 reject(reason) 来表示加载失败
-有一种推荐的做法：
-  将异步组件和webpack的code-splitting功能一起配合使用。
-Vue.component('async-webpack-example', function (resolve) {
-  // 这个特殊的 `require` 语法将会告诉 webpack
-  // 自动将你的构建代码切割成多个包，这些包
-  // 会通过 Ajax 请求加载
-  require(['./my-async-component'], resolve)
-})
-// 结合es6语法
-Vue.component(
-  'async-webpack-example',
-  // 这个动态导入会返回一个 `Promise` 对象。
-  () => import('./my-async-component')
-)
-//当使用局部注册时，你也可以直接提供一个返回promise的函数
-new Vue({
-  // ...
-  components: {
-    'my-component': () => import('./my-async-component')
-  }
-})
-const AsyncComponent = () => ({
-  // 需要加载的组件 (应该是一个 `Promise` 对象)
-  component: import('./MyComponent.vue'),
-  // 异步组件加载时使用的组件
-  loading: LoadingComponent,
-  // 加载失败时使用的组件
-  error: ErrorComponent,
-  // 展示加载时组件的延时时间。默认值是 200 (毫秒)
-  delay: 200,
-  // 如果提供了超时时间且组件加载也超时了，
-  // 则使用加载失败时使用的组件。默认值是：`Infinity`
-  timeout: 3000
-})
-处理边界情况
-
-一、Vue 基础知识之 Vue.extend
-vue.extend(options)
-使用vue来创建一个子类，参数是一个包含组件选项的对象。
-<div id="mount-point"></div>
-// 创建构造器
-var Profile = Vue.extend({
-  template: '<p>{{firstName}} {{lastName}} aka {{alias}}</p>',
-  data: function () {
-    return {
-      firstName: 'Walter',
-      lastName: 'White',
-      alias: 'Heisenberg'
+@media only screen and (max-width:1150px){
+    div{border:solid 1px;}
+}
+@media not print and (max-width:1150px){
+    div{border-radius:50%;}
+}
+@media还可以用在link标签上，按需加载css
+<link rel="stylesheet" href="css/1.css" media='(max-width:500px)'>
+平时响应式网站的开发，我都会先对比PC和MOBILE的设计稿，看看有什么区别，然后才进行编写css。通常都是使用flex。宽度尽量用百分比，间距、高度、字体大小使用em，就可以很方便的进行大小的控制。
+REM
+REM这个单位，会根据html的font-size大小进行转换。
+html{font-size:100px;}
+p{padding-top:.5rem;}
+.5rem = 50px / 100
+转换后p的padding-top就是50px了。只要我们进行适当的计算，当前屏幕的宽度，html的font-size是多少px就OK了。
+如何计算当前html的font-size值
+比如，我们拿到的设计稿是750px，那就设置成当屏幕宽度是750的时候，html的font-size就是100px（当然这个100px你可以随意设置的，我设置成100px只是方便我计算），然后就根据当前屏幕的宽度 / 750 * 100，就得到了当前屏幕宽度的font-size值。
+//当前屏幕宽度 / 750 = 当前屏幕宽度的font-size / 100
+//代码如下
+(function (doc, win) {
+    var docEl = doc.documentElement,
+    resizeEvt = 'orientationchange' in window ? 'orientationchange' : 'resize',
+    recalc = function () {
+      var clientWidth = docEl.clientWidth;
+      if (!clientWidth) return;
+      docEl.style.fontSize = 100 * (clientWidth / 750) + 'px';
+    };
+    if (!doc.addEventListener) return;
+       win.addEventListener(resizeEvt, recalc, false);
+       doc.addEventListener('DOMContentLoaded', recalc, false);
+})(document, window);
+淘宝移动端REM
+这个很简单，只需要加载js就好了
+<script src="http://g.tbcdn.cn/mtb/lib-flexible/{{version}}/??flexible_css.js,flexible.js"></script>
+然后在css中，将px转为rem就好了。我是用scss的，所以写个函数就好了。
+@function s($px) {
+    @return ($px / 75) * 1rem;
+}
+p{
+    font-size:s(40);padding-left: s(52);
+}
+比如p的font-size在750的设计稿是40px，然后s(40)就OK了。
+设置viewport中的width
+这种方案，就是定死viewport中的width大小。
+比如设计稿是750的，然后就在代码上写：
+<met name='viewport' content='width=750' />
+我们用同样的页面，看看效果是怎么样
+第三种方案
+链接：第三种方案
+效果和第二种是一样的，在手机上看也是。
+.top{
+    display: flex;align-items:center;padding:50px 0 113.5px;justify-content:space-between;width:100%;
+    p{
+        font-size:40px;padding-left:52px;
     }
-  }
-})
-// 创建 Profile 实例，并挂载到一个元素上。
-new Profile().$mount('#mount-point')
-
-结果如下：
-<p>Walter White aka Heisenberg</p>
-
-注意：extend创建的是vue构造器，而不是我们平时写的组件实例，所以不能通过new Vue({component:testExtend})来直接使用，
-需要通过new Profile().$mount('#mount-point')来挂载到指定的元素上。
-二、为什么使用extend
-在vue项目中，我们有了初始化的根实例后，所有页面基本上由router来管理，组件也是通过import来进行局部注册。
-所以组件的创建我们不需要去关注，但是这样做会有几个缺点：
-1、组件模板都是事先定义好的，我们要从接口动态渲染组件怎么办？
-2、所有内容都是在#app下渲染，注册组件都是在当前位置渲染。如果我们要实现一个类似于window.alert()提示组件要求像调用js一样调用，该怎么办？
-三、简单示例
-import Vue from 'vue'
-
-const testComponent = Vue.extend({
-  template: '<div>{{ text }}</div>',
-  data: function () {
-    return {
-      text: 'extend test'
+    img{
+        width:71.5px;height: 71.5px;display: block;margin-right: 63.5px;
     }
-  }
-})
-//然后我们将它手动渲染：
-const extendComponent = new testComponent().$mount()
-//这时候，我们就将组件渲染挂载到 body 节点上了。
-//我们可以通过 $el 属性来访问 extendComponent 组件实例：
-document.body.appendChild(extendComponent.$el)
-
-
-vue异步更新队列
-    Vue在更新DOM时是异步执行的，只要侦听到数据变化，vue将开启一个队列，并缓冲在同一事件循环中发生的所有数据变更。
-    如果一个watcher被多次触发，只会被推入到队列中一次。
-    然后在下一个事件循环tick中，vue刷新队列并执行实际（已去重）工作。vue在内部对异步队列尝试使用原生的promise.then、mutationObserve和setImmediate，如果执行环境不支持，则会采用setTimeout（fn，0）代替。、
-    nextTick----在下次dom更新循环结束之后执行延时回调。在修改数据后立即使用这个方法，获取更新后的dom
-vue安全
-    第一原则：永远不要使用不可信任的模板。
-    vue的安全措施
-    1、html内容
-    不论使用模板还是渲染函数，内容都会被自动转义。
-    '<script>alert("hi")</script>'会被转义为&lt;script&gt;alert(&quot;hi&quot;)&lt;/script&gt;
-    改转义通过textContent的浏览器原生api完成
-    所以除非浏览器本身存在安全漏洞，否则不会存在安全漏洞
-
-    动态 attribute 绑定也会自动被转义，因此避免了通过闭合title而注入新的任意HTML
-
-
-    要让div获取 焦点，必须加tabindex="0"的属性
-    curDom.one('blur', () => {
-            console.log('hahah')
-    }).attr("tabindex", '0').focus();
-
-js垃圾回收
-js的内存管理是自动的。js中主要的内存管理概念是可达性。
-这里列出固有的可达值得基本集合，这些值明显不能被释放，这些值被称为根。如果一个值可以通过引用或引用链从根访问任何其他值，则认为该值是可达的。
-    比如：当前函数的局部变量和参数
-    嵌套调用是，当前调用链上所有的函数的变量与参数
-    全局变量（还有一些内部的）
-内部算法：
-    垃圾回收器找到所有的根，以及它们的引用，以及引用的引用...,此过程中遍历到的对象都会被记住，以免将来再次遍历到同一个对象。
-    如此操作，直到所有的可达引用都被访问到
-    然后删除没有被标记的对象。
-算法中的一些优化点：
-    分代收集--对象被分为两组，新的和旧的。许多对象出现，完成他们的工作并很快死去，他们可以被很快清理。而那些长期存活的对象就会变得老旧，而被检查的频率也会减少。
-    增量收集--如果对象较多，那么在遍历并标记整个对象的时候会费时费力，造成延时。所以引擎会将垃圾回收工作分成几部分来做。然后将这几部分逐一进行处理。这需要他们之间有额外的标记来追踪变化。这样做大的延时就会变成小的延时。
-    闲时收集：垃圾回收器只会在cpu空闲的时候尝试进行，以减少可能对代码执行的影响。 
-
-mockjs
-    mockjs是一个模拟json数据的测试工具
-    安装mockjs
-    npm install mockjs --save-dev
-    新建mockjs
-    import Mock form "mockjs";
-		Mock.mock('/api/news', "get", {
-			'data|10': [
-				{
-					'id|+1': 1,
-					'title|+1': Mock.Random.cword(8, 20),
-					'image|+1': Mock.Random.image('200x100', Mock.Random.color()),
-					'date|+1': Mock.Random.date('yyyy-MM-dd')
-				}
-			]
-		});
-		导入mockjs
-		import "./js/mock.js";
-		$.ajax({
-			url: "/api/news",
-			type: "get",
-			dataType: "json",
-			success: function (res) {
-				console.log(res.news);
-			}
-		})
-		//模拟post请求,外层的Mock只负责拦截接口和方法的定义
-		Mock.mock('/api/addUser', 'post', function (option) {
-			//请求相关的参数
-			console.log(option)
-			//模拟假数据需要重新写Mock
-			return Mock.mock({
-				status: 200,
-				message: '@cword(4,9)'
-			})
-		})
-移动端布局及适配方式
-viewport使用
-<meta name="viewport" content="width=device-width,initial-scale=1.0, maximum-scale=1.0,user-scalable=no" />
-width：设置layout viewport 的宽度，为一个正整数，或字符串"device-width"
-initial-scale：设置页面的初始缩放值，为一个数字，可以带小数
-minimum-scale：允许用户的最小缩放值， 为一个数字，可以带小数
-maximum-scale：允许用户的最大缩放值，为一个数字，可以带小数
-height：设置layout viewport 的高度，这个属性对我们并不重要，很少使用
-user-scalable：是否允许用户进行缩放，值为"no"或"yes", no 代表不允许，yes代表允许
-
-format-detection使用
-// ios下会自动对数字和邮件做一些处理，这些是避免做处理的
-<meta name=“format-detection” content=“telephone=no,email=no,date=no,address=no” />
-telephone：电话
-eamil：邮箱
-date：日期
-address：地址
-
-禁止IE使用兼容性模式
-<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
-
-移动端如何做适配？
-
-采用rem作为布局单位。
-
-什么是rem?
-
-rem是CSS3新增的相对长度单位，是指相对于根元素html的font-size计算值的大小。
-简单可理解为屏幕宽度的百分比。
-
-rem与em的区别？
-rem是针对根元素的html的font-size计算值大小计算的。
-em是根据父元素的font-size大小计算的。
-
-使用手淘flexible.js计算rem
-比如：750px设计稿，那么1rem=75px， div的高是50px ，50px换算成rem公式：
-50px/75px=0.7rem;
-
-解决1px细线问题
-问题出现原因：
-在retina（视网膜）屏上面， devicePixelRatio（物理像素）这个值是2或3， 所以1px长度映射到物理像素上就有2px或3px那么长。
-
-解决方案：
-
-viewport + rem 方案
-
-<meta name=“viewport” content=“initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no” /> 
-
-接下来的任务就是js的动态修改缩放比 以及 实现rem根元素字体大小的设置。
-
-var viewport = document.querySelector("meta[name=viewport]");
-if (window.devicePixelRatio == 1) { 
-     viewport.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no')
- } 
-if (window.devicePixelRatio == 2) { 
-	     viewport.setAttribute('content', 'width=device-width, initial-scale=0.5, maximum-scale=0.5, minimum-scale=0.5, user-scalable=no') 
-} 
-if (window.devicePixelRatio == 3) { 
-     viewport.setAttribute('content', 'width=device-width, initial-scale=0.333333333, maximum-scale=0.333333333, minimum-scale=0.333333333, user-scalable=no') 
-} 
-var docEl = document.documentElement; 
-var fontsize = 10 * (docEl.clientWidth / 320) + 'px'; 
-docEl.style.fontSize = fontsize;
-
-面试解答：
-判断devicePixelRatio物理像素如果为1，设置viewport缩放大小为1，如果为2设置viewport缩放大小为0.5，如果为3设置viewport缩放大小为0.33….。
-
-vuex
-Vuex 是一个专为 Vue.js 应用程序开发的状态管理模式。将数据分发给各个组件，异步数据流，统一封装接口。
-应用场景比如：购物车、会员登录等需要跨页面，跨组件实时传递数据的地方
-安装
-npm install --save vuex
-//导入vuex
-import Vuex from 'vuex'
-//启用vuex
-Vue.use(Vuex)
-//实例化对象
-let store=new Vuex.Store({
-    state:{}//初始化数据
-    mutations:{}//同步操作方法
-    actions:{}//异步操作，用于操作mutations里面的方法，如果mutations里面的方法操作量大最好写在actions里面。    
-    getters:{}//有时候我们需要从 store 中的 state 中派生出一些状态，例如对列表进行过滤并计数
-})
-new Vue({
-  el: '#app',
-  router,
-  store,//挂载到vue里使用
-  components: { App },
-  template: '<App/>'
-})
-
-具体使用
-//state：定义vuex的数据源
-state: {
-	total:0,
-		users: [
-			{ id: 1, name: "张三", age: 18 },
-			{ id: 2, name: "李四", age: 20 },
-			{ id: 3, name: "王五", age: 22 },
-			{ id: 4, name: "赵六", age: 25 }
-		]
 }
-页面调用方式一：
-this.$store.state.count
-页面调用方式二：
-使用辅助函数
-//方式一：
-import { mapState } from 'vuex'
-computed:{
-	...mapState(['total'])
-}
-//方式二：
-import { mapState } from 'vuex'
-computed:{
-	...mapState({total:"total"})
+而代码是直接使用px的，定死的。
+
+感觉从效果上来看，是很完美的，但是为什么不是这种方法最流行？
+
+@media screen and (max-width:360px){
+    .box{color:red;}
 }
 
+@media screen and (max-width:520px){
+    .box{color:black;}
+}
 
-this.$forceUpdate() 可以进行强制更新
-this.$set 只适用于对象新加key，如果key值已存在，只会更新数据，不会更新视图
-
-HTMLDOM教程
-    HTML DOM 定义了访问和操作 HTML 文档的标准方法，DOM 以树结构表达 HTML 文档
-1、HTML方法
-getElementById()，返回带有指定id的元素
-    document.getElementById("intro");
-getElementsByTagName()	返回包含带有指定标签名称的所有元素的节点列表（集合/节点数组）。
-    document.getElementsByTagName("p")：下面的例子返回包含文档中所有 <p> 元素的列表
-getElementsByClassName()	返回包含带有指定类名的所有元素的节点列表。
-    document.getElementsByClassName("intro");  返回包含 class="intro" 的所有元素的一个列表
-
-appendChild(node) - 插入新的子节点（元素）
-removeChild(node) - 删除子节点（元素）
-    parent.removeChild(child);
-    child.parentNode.removeChild(child);
-replaceChild() 替换子节点。
-    var parent=document.getElementById("div1");
-    var child=document.getElementById("p1");
-    var para=document.createElement("p");
-    var node=document.createTextNode("这是一个新的段落。");
-    para.appendChild(node);
-    parent.replaceChild(para,child);
-insertBefore() 在指定的子节点前面插入新的子节点。
-    var para=document.createElement("p");
-    var node=document.createTextNode("这是一个新段落。");
-    para.appendChild(node);
-    
-    var element=document.getElementById("div1");
-    var child=document.getElementById("p1");
-    element.insertBefore(para,child);
-
-innerHTML - 获取或改变任意 HTML 元素
-        document.getElementById("p1").innerHTML="新文本!";
-parentNode - 节点（元素）的父节点
-childNodes - 节点（元素）的子节点
-attributes - 节点（元素）的属性节点
-
-
-createAttribute()	创建属性节点。
-createElement()	创建元素节点。
-createTextNode()	创建文本节点。
-getAttribute()	返回指定的属性值。
-setAttribute()	把指定属性设置或修改为指定的值。
-2、HTML DOM属性
-改变样式
-document.getElementById("p2").style.color="blue";
-document.getElementById("p2").style.fontFamily="Arial";
-document.getElementById("p2").style.fontSize="larger";
-
-创建新的 HTML 元素
-var para=document.createElement("p");
-var node=document.createTextNode("这是一个新段落。");
-para.appendChild(node);
-var element=document.getElementById("div1");
-element.appendChild(para);
-3、事件
-<button onclick="displayDate()">点我</button>
-document.getElementById("myBtn").onclick=function(){displayDate()}
-
-当用户进入或离开页面时，会触发 onload 和 onunload 事件。
-onload 事件可用于检查访客的浏览器类型和版本，以便基于这些信息来加载不同版本的网页。
-onload 和 onunload 事件可用于处理 cookies。
-
-
-
-
-
-
-    
-
+@media screen and (max-width:750px){
+    .box{color:yellow;}
+}
+我在iphone7，小米5s，谷歌浏览器模拟的iphone6plus上，字体颜色都是黄色的。所以@media媒体查询是无法使用的，因为已经将宽度定死了。而REM方案却可以使用媒体查询的。因为移动端有很多奇怪的大小，而且在不同的浏览器或者微信上，高度都是不同的，所以可能会造成间距有很大的问题。
+window.screen.width
+用js，可以获取当前设备的宽度。
+对比三种方式
+响应式的优缺点
+优点：兼容性好，@media在ie9以上是支持的，PC和MOBILE是同一套代码的，不用分开。
+缺点：要写得css相对另外两个多很多，而且各个断点都要做好。css样式会稍微大点，更麻烦。
+REM优缺点
+优点：能维持能整体的布局效果，移动端兼容性好，不用写多个css代码，而且还可以利用@media进行优化。
+缺点：开头要引入一段js代码，单位都要改成rem(font-size可以用px)，计算rem比较麻烦(可以引用预处理器，但是增加了编译过程，相对麻烦了点)。pc和mobile要分开。
+设置viewport中的width
+优点：和REM相同，而且不用写rem，直接使用px，更加快捷。
+缺点：效果可能没rem的好，图片可能会相对模糊，而且无法使用@media进行断点，不同size的手机上显示，高度间距可能会相差很大。
+总结
+还是看项目需求，再决定使用哪种方案，如果就手机站的话，我使用REM比较多。如果对距离比较精确的话，大量css3动画的，就使用第三种。
+2.1固定布局
+固定布局是第一次做移动端时最好的选择方式,思路沿用PC端,上手比较快。在标签里把 viewport 加好,然后设想整个网页的宽度为 320px 即可。 其他地方根据 PC 端来布局。 缺点:大屏手机显示网页比较宽,固定布局宽度参照永远是 320px,导致左右两 边会有空白。
+demo
+2.2流体布局
+流布局与固定宽度布局基本不同点就在于对网站尺寸的测量单位不同。固定宽度布局使用的是像素，但是流布局使用的是百分比，看到百分比，你应该想到，这将提供了很强的可塑性和流动性。换句话说，通过设置了百分比，你将不需要考虑设备尺寸或者屏幕宽度大小了，结论就是，你可以为每种情形找到一种可行的方案，因为你的设计尺寸将适应所有的设备尺寸。
+demo
+2.3FLEX布局
+flex也称为弹性布局，他会根据页面的剩余宽度自动分配空间。
+2.4栅格布局
+bootstrap是一个比较流行的响应式前端框架，利用bootstrap的栅格系统可以实现响应式的移动端布局。
+3.常见问题
+移动端和PC端的区别
+4.解决方案
+第一： PC考虑的是浏览器的兼容性，而移动端开发考虑的更多的是手机兼容性，因为目前不管是android手机还是ios手机，一般浏览器使用的都是webkit内核，所以说做移动端开发，更多考虑的应该是手机分辨率的适配，和不同操作系统的略微差异化。
+第二： 在部分事件的处理上，移动端多出来的事件是触屏事件，而缺少的是hover事件。 另外包括移动端弹出的手机键盘的处理，这样的问题在PC端都是遇不到的
+第三：在移动端有很多网页是可以横屏看也可以竖屏看，并且很多屏幕的饿分辨率都是不一样的，所以只要牵涉到移动端都要考虑用响应式布局
+第四： 在动画处理上，PC端由于要考虑IE的兼容性，所以通常使用JS做动画的通用性会更好一些，但是CSS3做了很大的牺牲， 而在手机端，如果要做一些动画、特效等，第一选择是CSS3， 既简单、效率又高。
+第五：Pc端的交互是鼠标，键盘的交互而移动端变成了触摸，手势的交互
+新闻，社区等可阅读内容较多的场景：px+flex+百分比
+对视觉组件种类较多，视觉设计对元素位置的相对关系依赖较强的移动端页面：vw + rem
