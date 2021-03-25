@@ -1,592 +1,357 @@
-移动端布局方法
-1、响应式布局
-利用@media进行断点，在每个断点中编写css
-@media (max-width:1000px){
-    div{background:blue;}
-}
-@media (min-width:1000px) and (max-width:1150px){
-    div{background: yellow;}
-}
-@media only screen and (max-width:1150px){
-    div{border:solid 1px;}
-}
-@media not print and (max-width:1150px){
-    div{border-radius:50%;}
-}
-@media还可以用在link标签上，按需加载css
-<link rel="stylesheet" href="css/1.css" media='(max-width:500px)'>
-平时响应式网站的开发，我都会先对比PC和MOBILE的设计稿，看看有什么区别，然后才进行编写css。通常都是使用flex。宽度尽量用百分比，间距、高度、字体大小使用em，就可以很方便的进行大小的控制。
-REM
-REM这个单位，会根据html的font-size大小进行转换。
-html{font-size:100px;}
-p{padding-top:.5rem;}
-.5rem = 50px / 100
-转换后p的padding-top就是50px了。只要我们进行适当的计算，当前屏幕的宽度，html的font-size是多少px就OK了。
-如何计算当前html的font-size值
-比如，我们拿到的设计稿是750px，那就设置成当屏幕宽度是750的时候，html的font-size就是100px（当然这个100px你可以随意设置的，我设置成100px只是方便我计算），然后就根据当前屏幕的宽度 / 750 * 100，就得到了当前屏幕宽度的font-size值。
-//当前屏幕宽度 / 750 = 当前屏幕宽度的font-size / 100
-//代码如下
-(function (doc, win) {
-    var docEl = doc.documentElement,
-    resizeEvt = 'orientationchange' in window ? 'orientationchange' : 'resize',
-    recalc = function () {
-      var clientWidth = docEl.clientWidth;
-      if (!clientWidth) return;
-      docEl.style.fontSize = 100 * (clientWidth / 750) + 'px';
-    };
-    if (!doc.addEventListener) return;
-       win.addEventListener(resizeEvt, recalc, false);
-       doc.addEventListener('DOMContentLoaded', recalc, false);
-})(document, window);
-淘宝移动端REM
-这个很简单，只需要加载js就好了
-<script src="http://g.tbcdn.cn/mtb/lib-flexible/{{version}}/??flexible_css.js,flexible.js"></script>
-然后在css中，将px转为rem就好了。我是用scss的，所以写个函数就好了。
-@function s($px) {
-    @return ($px / 75) * 1rem;
-}
-p{
-    font-size:s(40);padding-left: s(52);
-}
-比如p的font-size在750的设计稿是40px，然后s(40)就OK了。
-设置viewport中的width
-这种方案，就是定死viewport中的width大小。
-比如设计稿是750的，然后就在代码上写：
-<met name='viewport' content='width=750' />
-我们用同样的页面，看看效果是怎么样
-第三种方案
-链接：第三种方案
-效果和第二种是一样的，在手机上看也是。
-.top{
-    display: flex;align-items:center;padding:50px 0 113.5px;justify-content:space-between;width:100%;
-    p{
-        font-size:40px;padding-left:52px;
-    }
-    img{
-        width:71.5px;height: 71.5px;display: block;margin-right: 63.5px;
-    }
-}
-而代码是直接使用px的，定死的。
+webpack
+一、webpack介绍
+	webpack是一个静态模块打包工具。在webpack看来，项目里所有的资源皆模块，利用资源依赖关系，把各模块之间关联起来。简单来讲，就是webpack对有依赖关系的多个模块文件进行打包处理后，生成浏览器可以直接，高效运行的资源。
+	通过入口文件开始，利用递归找到直接依赖或间接依赖的所有模块，并在内部构建一个能映射出项目所需的所有模块的依赖图，并进行 webpack 打包生成一个或多个 bundle 文件
 
-感觉从效果上来看，是很完美的，但是为什么不是这种方法最流行？
+	打包用的是webpack命令，即npm webpack，从webpack4开始，把webpack拆成webpack和webpack-cli两部分，分工如下：
+		webpack：负责js的打包工作
+		webpack-cli：解析webpack命令，命令内部使用webpack功能
+		并且webpack能解析打包各种模块规范的js代码，包括：ES6、Commonjs、AND/requirejs以及CMD/Seajs
+	优点：
+		1、专注处理模块化的项目，能够做到开箱即用，一步到位。
+		2、可通过plugin扩展，完整好用又不失灵活
+		3、使用场景不限于web开发
+		4、社区庞大活跃，经常引入紧跟时代发展的新特性，能为大多数场景找到已有的开源扩展
+		5、良好的开发体验
+	缺点：
+		只能用于采用模块化开发的项目
+二、什么是loader？什么是plugin？
+	loader：模块转化器，webpack将一切视为模块，但是webpack只能解析js文件，而loader作用是让webpack拥有了加载和解析非js文件的能力
+	plugin：在webpack构建流程中的特定时机注入扩展逻辑，让它具有更多的灵活性。在webpack运行的生命周期中会广播出许多事件，plugin可以监听这些事件，在合适的时机通过webpack提供的api改变输出结果。
+	用法区别：
+	loader在module.rules中配置，也就是说他作为模块的解析规则而存在。类型为数组，每一项都是object，里面描述了对于什么类型的文件，使用什么加载和使用的参数
+	plugin在plugins中单独配置。类型为数组，每一项都是一个plugin实例，参数都通过构造函数传入。
+三、有哪些常用的Loader？他们是解决什么问题的？
+	file-loader:把文件输出到一个文件夹中，在代码中通过相对URL去引用输出的文件
+	url-loader：和file-loader类似，但是能在文件很小的情况下以base64的方式把文件内容注入到代码中去。
+	source-map-loader：加载额外的sourcemap文件，以便于断点调试
+	image-loader：加载并且压缩图片文件
+	babel-loader：将es6转化为es5
+	css-loader：加载css，支持模块化，压缩，文件导入等特性。
+	style-loader：将css代码注入到js中，通过dom操作去加载 css
+	eslint-loader：通过eslint检查js代码
+	svg-inline-loader：将压缩后的svg内容注入到代码中
+	json-loader：加载json文件（默认包含）
+	ts-loader：将ts转化为js
+	awesome-ts-loader：将ts转化为js，性能优于ts-loader
+	sass-loader：将 CSS 代码注入 JavaScript 中，通过 DOM 操作去加载 CSS
+	postcss-loader：扩展 CSS 语法，使用下一代 CSS，可以配合 autoprefixer 插件自动补齐 CSS3 前缀
+	tslint-loader：通过 TSLint检查 TypeScript 代码
+	vue-loader：加载 Vue.js 单文件组件
+四、有哪些常见的 Plugin？他们是解决什么问题的？
+	define-plugin：定义环境变量
+	commons-chunk-plugin：提取公共代码
+	terser-webpack-plugin：支持压缩es6（webpack4）
+	ignore-plugin：忽略部分文件
+	html-webpack-plugin：简化html文件创建（依赖于htm-loader）
+	web-webpack-plugin：可以方便的为单页应用输出html，比html-webpack-plugin好用
+	min-css-extract-plugin：分离样式文件，css提取问单独文件，支持按需加载
+	clear-webpack-plugin：删除打包文件
+	happypack：实现多线程加速编译
+五：如何利用webpack来优化前端性能
+	用webpack优化前端性能，是指优化webpack的输出结果，让最终打包的代码在浏览器上高效运行
+	1、压缩代码，删除多余代码，注释，简化代码的写法等方式。
+		用UglifyJsPlugin和ParalleUglifyPlugin压缩js文件。
+		用mini-css-extract-plugin压缩css
+	2、利用cdn加速，在构建过程中，将引用的静态资源路径修改为cdn上对应的路径。可以利用webpack对于output参数和各loader的publicPath参数来修改资源路径
+	3、删除死代码。JS 用 Tree Shaking，CSS 需要使用 Purify-CSS
+	4、提取公共代码。用 CommonsChunkPlugin 插件
+六、分别介绍bundle，chunk，module是什么
+	bundle：是由webpack打包出来的文件
+	chunk：代码块，一个chunk由多个模块组合而成，用于代码的合并和分隔
+	module：是开发中的单个模块，在webpack中一切皆模块，一个模块对应一个文件，webpack会从配置的entry中递归出所有依赖的模块。
+七、webpack的热更新原理
+	热更新又称热替换，基于webpack-dev-server
+	当你对代码修改并保存后，将会对代码进行重新打包，并将改动的模块发送到浏览器端。浏览器用新的模块替换掉旧的模块，趋势线局部更新而非页面整体刷新。
+八、webpack的构建流程是什么
+	webpack的运行流程是一个串行的过程，从启动到结束会依次执行以下流程
+	1、初始化参数：从配置文件和shell语句中读取与合并参数，得到最终的参数。
+	2、初始化编译：用上一步得到的参数初始化complier对象，加载所有配置的插件，执行对象的run方法开始编译
+	3、确定入口：根据配置中的entry找出所有的入口文件
+	4、编译模块：从入口文件出发，调用所有配置的loader对模块进行编译，然后再找出该模块依赖的模块，递归执行本步骤。直到所有入口依赖的模块都经过此步骤的处理。这样就得到了每个模块被编译后的最终内容，以及它们之间的依赖关系。
+	5、输出资源：根据入口和模块之间的依赖关系，组装成一个个包含多个模块的chunk，再把每个chunk转化成一个单独的文件加入到输出列表，这步是可以修改输入内容的最后机会。
+	6、输出完成：根据配置确定输出的路径和文件名，把文件内容写入到文件系统。
+		在以上过程中，webpack会在特定的时间点广播特定的事件，插件会监听到感兴趣的事件执行特定的代码，并且可以调用webpack的api改变输出结果。
+九、如何提高webpack的构建速度
+	1、多入口情况下，使用commonChunkPlugin来提取公共代码
+	2、通过externals配来提取常用库
+	3、通过D11plugin和D11ReferencePlugin预编译资源模块，通过D11Plugin对那些我们引用但是绝对不会修改的包进行预编译，然后再通过D11ReferencePlugin把预编译的模块加载进来。
+	4、使用happypack实现多线程加速编译
+	5、使用webpack-uglify-parallel来提升uglifyPlugin的压缩速度。原理上此插件采用了多核并行压缩来提升压缩速度。
+	6、使用TreeShaking和Scope Hoisting来剔除多余代码
+十、在实际工程中，配置文件上百行乃是常事，如何保证各个loader按照预想方式工作？
+	可以使用enforce强制执行loader的作用顺序，pre代表在所有正常的loader之前执行，post是所有loader之后执行。
 
-@media screen and (max-width:360px){
-    .box{color:red;}
+React hook
+
+一、基本概念
+1、纯函数
+	一个函数的返回结果只依赖于它的参数，并且在执行过程里面没有副作用(不会改变入参)，这个函数就是纯函数。
+2、类组件和纯函数组件
+	类的写法
+	class welcome extends React.Component {
+		render() {
+			return <h1>hello,{this.props.name}</h1>
+		}
+	}
+	钩子的写法
+	function welcome(props) {
+		return <h1>hello,{props.name}</h1>
+	}
+3、类和函数的特点
+	类是数据和逻辑的封装，组件的状态和操作方法都是封装在一起的。如果选择了类的写法，就应该把相关的状态和方法都写在同一个class里面
+
+	函数一般只应该做一件事，就是返回一个值。如果你有多个操作，每个操作应该写成一个单独的函数。而且数据的状态应该与操作方法分离。
+	根据这种理念，react函数只应该做一件事，就是返回html代码，而没有其他的功能。
+
+	纯函数组件没有状态，没有生命周期，没有this，因存在如上特点，使得纯函数组件只能做UI展示的功能， 涉及到状态的管理与切换就不得不用到类组件或这redux， 但因为简单的页面也是用类组件，同时要继承一个React实例，使得代码会显得很重。
+4、副效应
+	问题：函数只能进行数据计算，那么那些不涉及数字计算的（改变状态，存储数据，生成日志）应该写在哪里呢？
+	函数式编程将那些非纯函数的操作，称为副效应
+5、钩子的作用
+	一句话，钩子就是react函数组件的副效应解决方案，用来为函数组件引入副效应。函数组件的主体只能用来返回组件的html代码，所有其他的副效应都必须通过钩子引入
+二、常见的钩子
+	1、useState() 
+	用于为函数组件引入状态，纯函数不能有状态，所以把状态放在钩子里面。
+	参数：作用是给创建出来的的参数一个默认值
+	返回值：[当前的state值,设置新值使用的函数(约定是set前缀加上状态的变量名)]
+	例子如下：
+import React,{useState} from 'react'
+export default function CounterHook() {
+	const [count, setCount] = useState(0)
+	return (
+		<div>
+			<button onClick={() => setCount(count + 1)}>+1</button>
+		</div>
+	)
 }
-
-@media screen and (max-width:520px){
-    .box{color:black;}
+	2、useContext()
+	用于在组件之间共享状态
+	状态共享通常使用redux mobx dva实现，useContext是react提供的实现数据共享的api，解决props层层传递的问题
+	例：现在有俩组件Navbar和messages，我们希望他们之间共享状态
+	(1) React.createContext()创建Context对象
+const AppContext = React.createContext();
+	(2) 使用Context Provider包裹组件，给他的后代组件提供数据
+<AppContext.Provide value={{username:"superawesome"}}>
+	<div className="App">
+		<Navbar/>
+		<Messages/>
+	</div>
+</AppContext.Provider>
+	(3) ContextProvider所有的后代组件，都可以通过useContext()钩子函数用来引入Context对象，从中获取username属性
+//Navbar组件
+const Navbar = () => {
+	const { username } = useContext(AppContext);
+	return (
+		<div className="navbar">
+			<p>{username}</p>
+		</div>
+	);
 }
-
-@media screen and (max-width:750px){
-    .box{color:yellow;}
+//Message组件
+const Messages = () => {
+  const { username } = useContext(AppContext)
+  return (
+    <div className="messages">
+      <p>{username}</p>
+    </div>
+  )
 }
-我在iphone7，小米5s，谷歌浏览器模拟的iphone6plus上，字体颜色都是黄色的。所以@media媒体查询是无法使用的，因为已经将宽度定死了。而REM方案却可以使用媒体查询的。因为移动端有很多奇怪的大小，而且在不同的浏览器或者微信上，高度都是不同的，所以可能会造成间距有很大的问题。
-window.screen.width
-用js，可以获取当前设备的宽度。
-对比三种方式
-响应式的优缺点
-优点：兼容性好，@media在ie9以上是支持的，PC和MOBILE是同一套代码的，不用分开。
-缺点：要写得css相对另外两个多很多，而且各个断点都要做好。css样式会稍微大点，更麻烦。
-REM优缺点
-优点：能维持能整体的布局效果，移动端兼容性好，不用写多个css代码，而且还可以利用@media进行优化。
-缺点：开头要引入一段js代码，单位都要改成rem(font-size可以用px)，计算rem比较麻烦(可以引用预处理器，但是增加了编译过程，相对麻烦了点)。pc和mobile要分开。
-设置viewport中的width
-优点：和REM相同，而且不用写rem，直接使用px，更加快捷。
-缺点：效果可能没rem的好，图片可能会相对模糊，而且无法使用@media进行断点，不同size的手机上显示，高度间距可能会相差很大。
-总结
-还是看项目需求，再决定使用哪种方案，如果就手机站的话，我使用REM比较多。如果对距离比较精确的话，大量css3动画的，就使用第三种。
-2.1固定布局
-固定布局是第一次做移动端时最好的选择方式,思路沿用PC端,上手比较快。在标签里把 viewport 加好,然后设想整个网页的宽度为 320px 即可。 其他地方根据 PC 端来布局。 缺点:大屏手机显示网页比较宽,固定布局宽度参照永远是 320px,导致左右两 边会有空白。
-demo
-2.2流体布局
-流布局与固定宽度布局基本不同点就在于对网站尺寸的测量单位不同。固定宽度布局使用的是像素，但是流布局使用的是百分比，看到百分比，你应该想到，这将提供了很强的可塑性和流动性。换句话说，通过设置了百分比，你将不需要考虑设备尺寸或者屏幕宽度大小了，结论就是，你可以为每种情形找到一种可行的方案，因为你的设计尺寸将适应所有的设备尺寸。
-demo
-2.3FLEX布局
-flex也称为弹性布局，他会根据页面的剩余宽度自动分配空间。
-2.4栅格布局
-bootstrap是一个比较流行的响应式前端框架，利用bootstrap的栅格系统可以实现响应式的移动端布局。
-3.常见问题
-移动端和PC端的区别
-4.解决方案
-第一： PC考虑的是浏览器的兼容性，而移动端开发考虑的更多的是手机兼容性，因为目前不管是android手机还是ios手机，一般浏览器使用的都是webkit内核，所以说做移动端开发，更多考虑的应该是手机分辨率的适配，和不同操作系统的略微差异化。
-第二： 在部分事件的处理上，移动端多出来的事件是触屏事件，而缺少的是hover事件。 另外包括移动端弹出的手机键盘的处理，这样的问题在PC端都是遇不到的
-第三：在移动端有很多网页是可以横屏看也可以竖屏看，并且很多屏幕的饿分辨率都是不一样的，所以只要牵涉到移动端都要考虑用响应式布局
-第四： 在动画处理上，PC端由于要考虑IE的兼容性，所以通常使用JS做动画的通用性会更好一些，但是CSS3做了很大的牺牲， 而在手机端，如果要做一些动画、特效等，第一选择是CSS3， 既简单、效率又高。
-第五：Pc端的交互是鼠标，键盘的交互而移动端变成了触摸，手势的交互
-新闻，社区等可阅读内容较多的场景：px+flex+百分比
-对视觉组件种类较多，视觉设计对元素位置的相对关系依赖较强的移动端页面：vw + rem
-
-一、什么是跨域，为什么会出现？
-	当一个请求url的协议、域名、端口三者之间任意一个与当前页面url不同即为跨域
-	浏览器的同源安全策略导致了跨域
-	同源策略限制了从同一个源加载的文档或脚本如何与来自另一个源的资源进行交互。这是一个用于隔离潜在恶意文件的重要安全机制
-	所谓同源（即指在同一个域）就是两个页面具有相同的协议（protocol），主机（host）和端口号（port）
-二、非同源限制
-	无法读取非同源网页的 Cookie、LocalStorage 和 IndexedDB
-	无法接触非同源网页的 DOM
-	无法向非同源地址发送 AJAX 请求
-	案例：
-	如果没有上述限制，会很危险
-	1、没有同源策略限制的接口请求
-	cookie一般用来处理登录等场景，目的是让服务端知道，是谁发出的这次请求。如果你请求了接口进行登录，服务端验证通过后会在响应头加入Set-Cookie字段，然后下次再发起请求的时候，浏览器会自动将cookie附加在HTTP请求的头字段Cookie中，服务端就能知道这个用户已经登录过了。
-	此时，如果你在a网站登录过，你再打开b网站，由于没有同源策略的限制，b网站向a网站发起了请求。由于服务端验证过后，会在响应头加入Set-Cookie字段，然后下次发起请求的时候，浏览器会自动将cookie附加在HTTP请求的头字段Cookie中，这样一来，这个不法网站就相当于登录了你的账号，很危险。这就是CSRF攻击，跨站请求伪造。
-
-	思考：即使有同源策略,但cookie是明文的，还不是一样可以拿下来。所以要服务端设置httpOnly，使得前端无法操作cookie。如果没有这样的设置，像xss攻击就可以去获取到cookie；设置secure，则保证在https的加密通信中从传输以防截获
-
-	2、没有同源策略限制的Dom查询
-	正规的网站是www.yinhang.com,伪造的网站是www.yinghang.com，俩网站长得一模一样。
-	有一天你不小心点了进去，别人就可以直接拿到你的敏感信息
-	<iframe name="yinhang" scr="www.yinhang.com"></iframe>
-	const iframe = window.frames["yinhang"];
-	const node = iframe.document.getElementById("输入你账号密码的那个input")
-	拿到这个元素，还怕拿不到你的账号密码吗
-	
-	由此知道，同源策略确实能规避一些风险。
-三、跨域解决方法
-	3、JSONP
-		JSONP 是服务器与客户端跨源通信的常用方法。最大特点就是简单适用，兼容性好（兼容低版本IE），缺点是只支持get请求，不支持post请求。
-		核心思想：网页通过添加一个<script>元素，向服务器请求 JSON 数据，服务器收到请求后，将数据放在一个指定名字的回调函数的参数位置传回来。
-		1、原生实现
-		// 向服务器test.com发出请求，该请求的查询字符串有一个callback参数，用来指定回调函数的名字
-		<script src="http://test.com/data.php?callback=dosomething"></script>
-		
-		// 处理服务器返回回调函数的数据
-		<script type="text/javascript">
-				function dosomething(res){
-						// 处理获得的数据
-						console.log(res.data)
-				}
-		</script>
-		2、jQuery ajax
-		$.ajax({
-			url: 'http://www.test.com:8080/login',
-			type: 'get',
-			dataType: 'jsonp',  // 请求方式为jsonp
-			jsonpCallback: "handleCallback",    // 自定义回调函数名
-			data: {}
-		});
-		3、vue.js
-		this.$http.jsonp('http://www.domain2.com:8080/login', {
-    	params: {},
-    	jsonp: 'handleCallback'
-		}).then((res) => {
-    	console.log(res); 
-		})
-	4、CORS
-		CORS 是跨域资源分享（Cross-Origin Resource Sharing）的缩写。它是 W3C 标准，属于跨源 AJAX 请求的根本解决方法
-		整个CORS通信过程，都是浏览器自动完成，不需要用户参与。对于开发者来说，CORS通信与同源的AJAX通信没有差别，代码完全一样。浏览器一旦发现AJAX请求跨源，就会自动添加一些附加的头信息，有时还会多出一次附加的请求，但用户不会有感觉。
-		1、普通跨域请求：只需服务器端设置Access-Control-Allow-Origin
-		2、带cookie跨域请求：前后端都需要进行设置
-	【前端设置】根据xhr.withCredentials字段判断是否带有cookie
-		原生ajax
-		var xhr = new XMLHttpRequest(); // IE8/9需用window.XDomainRequest兼容
-		// 前端设置是否带cookie
-		xhr.withCredentials = true;
-		xhr.open('post', 'http://www.domain2.com:8080/login', true);
-		xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-		xhr.send('user=admin');
-		xhr.onreadystatechange = function () {
-			if (xhr.readyState == 4 && xhr.status == 200) {
-				alert(xhr.responseText);
+	3、useReducer()
+	useReducer函数可以提供类似于redux的功能
+//参数1：reducer函数
+//参数2：初始状态
+//返回值1：状态当前值
+//返回值2：发送action的dispatch函数
+const [state,dispatch] = useReducer(reducer,initialState)
+	计算器例子如下：
+//用于计算状态的reducer函数如下：
+const myReducer = (state, action) => {
+	switch (action.type) {
+		case ('countUp'):
+			return {
+				...state,
+				count: state.count + 1
 			}
+		default:
+			return state;
+	}
+}
+//组件代码如下：
+function App() {
+	const [state, dispatch] = useReducer(myReducer, { count: 0 });
+	return (
+		<div className="App">
+			<button onClick={() => dispatch({ type: 'countUp' })}>
+				+1
+      </button>
+			<p>Count: {state.count}</p>
+		</div>
+	);
+}
+由于hooks可以提供共享状态和Reducer函数，所以他在这些方面可以取代Redux。但是，他没法提供中间件（middlWare）和时间旅行（time travel）
+如果需要这个功能还是需要redux
+4、useEffect
+上面这些钩子，都是引入某种特定的副效应。而useEffect是通用的副效应钩子。找不到专门的副效应钩子时，就使用它。最常见的就是向服务器请求数据，以前，放在componentDidMount里面的代码，现在可以放在useEffect()。
+useEffect的作用就是指定一个副效应函数，组件每渲染一次，该函数就自动执行一次。组件首次在网页dom加载后，副效应函数也会执行。
+useEffect的参数是一个函数，他就是要完成的副效应。组件加载以后，react就会执行这个函数；有时候我们不希望，useEffect每次渲染的时候都执行，这时候可以指定第二个参数。使用一个数组指定副效应函数的依赖项，只有当依赖项变化时，才会重新渲染。
+	useEffect(() => {
+		document.title = "已完成"
+	}, [prop.name])
+上述例子中，useEffect的第二个参数是个数组，指定了第一个参数（副效应函数）的依赖项。只有该量发生变化时，副效应函数才会执行。
+如果第二个参数是一个空数组，表明副效应函数没有任何依赖项。这时，副效应函数只会在组件加载进入dom后执行一次，后面组件重新渲染就不会执行。
+
+useEffect的用途：
+	获取数据
+	事件监听或者订阅
+	改变dom
+	输出日志
+
+	下面是从远程服务器获取数据的例子：
+	import React, { useState, useEffect } from 'react';
+	import axios from 'axios';
+	function App() {
+		const [data, setData] = useState({ hits: [] });
+		useEffect(() => {
+			const fetchData = async () => {
+				const result = await axios(
+					'https://hn.algolia.com/api/v1/search?query=redux',
+				);
+				setData(result.data);
+			};
+			fetchData();
+		}, []);
+		return (
+			<ul>
+				{data.hits.map(item => (
+					<li key={item.objectID}>
+						<a href={item.url}>{item.title}</a>
+					</li>
+				))}
+			</ul>
+		);
+	}
+	export default App;
+
+	useEffect()的返回值
+	副效应是随着组件加载而发生的，那么组件卸载时，可能需要清理掉这个副效应。
+	useEffect()允许返回一个函数，在组件卸载的时候，执行该函数。清理副效应。如果不需要清理副效应，组件就不会返回任何值。
+	useEffect(() => {
+		const subscription = props.source.subscribe();
+		return () => {
+			subscription.unsubscribe();
 		};
+	}, [props.source]);
+	上面的例子中，useEffect在组件加载的时候订阅了一个事件，并且返回了一个清理函数，在组件卸载时取消订阅。
+	实际使用中，由于副效应函数默认每次渲染都会执行，所以清理函数不仅会在组件卸载时候执行一次，每次副效应函数重新执行之前，也会执行一次，用来清理上一次渲染的副效应。
+	useEffect()的注意点
+	使用时应该注意，如果有多个副效应，应该使用多次useEffect，而不应该合并写在一起。
+三、自定义钩子
+自定义封装前
+const Person = ({ personId }) => {
+	const [loading, setLoading] = useState(true);
+	const [person, setPerson] = useState({});
 
-		jQuery ajax
-		$.ajax({
-			url: 'http://www.test.com:8080/login',
-			type: 'get',
-			data: {},
-			xhrFields: {
-					withCredentials: true    // 前端设置是否带cookie
-			},
-			crossDomain: true,   // 会让请求头中包含跨域的额外信息，但不会含cookie
-		});
-
-		vue-resource
-		Vue.http.options.credentials = true
-
-		axios 
-		axios.defaults.withCredentials = true
-
-	【服务端设置】
-		服务器端对于CORS的支持，主要是通过设置Access-Control-Allow-Origin来进行的。如果浏览器检测到相应的设置，就可以允许Ajax进行跨域的访问。
-	① Java后台
-	/*
-	 * 导入包：import javax.servlet.http.HttpServletResponse;
-	 * 接口参数中定义：HttpServletResponse response
-	 */
-	// 允许跨域访问的域名：若有端口需写全（协议+域名+端口），若没有端口末尾不用加'/'
-	response.setHeader("Access-Control-Allow-Origin", "http://www.domain1.com");
-	// 允许前端带认证cookie：启用此项后，上面的域名不能为'*'，必须指定具体的域名，否则浏览器会提示
-	response.setHeader("Access-Control-Allow-Credentials", "true");
-	// 提示OPTIONS预检时，后端需要设置的两个常用自定义头
-	response.setHeader("Access-Control-Allow-Headers", "Content-Type,X-Requested-With");
-
-	② Nodejs后台
-	var http = require('http');
-	var qs = require('querystring');
-	var server = http.createServer();
-	server.on('request', function (req, res) {
-		var postData = '';
-		// 数据块接收中
-		req.addListener('data', function (chunk) {
-			postData += chunk;
-		});
-		// 数据接收完毕
-		req.addListener('end', function () {
-			postData = qs.parse(postData);
-			// 跨域后台设置
-			res.writeHead(200, {
-				'Access-Control-Allow-Credentials': 'true', // 后端允许发送Cookie
-				'Access-Control-Allow-Origin': 'http://www.domain1.com', // 允许访问的域（协议+域名+端口）
-				/* 
-				* 此处设置的cookie还是domain2的而非domain1，因为后端也不能跨域写cookie(nginx反向代理可以实现)，
-				* 但只要domain2中写入一次cookie认证，后面的跨域接口都能从domain2中获取cookie，从而实现所有的接口都能跨域访问
-				*/
-				'Set-Cookie': 'l=a123456;Path=/;Domain=www.domain2.com;HttpOnly'  // HttpOnly的作用是让js无法读取cookie
+	useEffect(() => {
+		setLoading(true);
+		fetch(`https://swapi.co/api/people/${personId}/`)
+			.then(response => response.json())
+			.then(data => {
+				setPerson(data);
+				setLoading(false);
 			});
-			res.write(JSON.stringify(postData));
-			res.end();
-		});
-	});
-	server.listen('8080');
-	console.log('Server is running at port 8080...');
+	}, [personId])
 
-两种请求
-浏览器将CORS请求分成两类：简单请求（simple request）和非简单请求（not-so-simple request），只要同时满足以下两大条件，就属于简单请求
-	1) 请求方法是以下三种方法之一：
-	HEAD
-	GET
-	POST
-	（2）HTTP的头信息不超出以下几种字段：
-	Accept
-	Accept-Language
-	Content-Language
-	Last-Event-ID
-	Content-Type：只限于三个值application/x-www-form-urlencoded、multipart/form-data、text/plain
-这是为了兼容表单（form），因为历史上表单一直可以发出跨域请求。AJAX 的跨域设计就是，只要表单可以发，AJAX 就可以直接发。
-凡是不同时满足上面两个条件，就属于非简单请求。
-浏览器对这两种请求的处理，是不一样的。
-
-简单请求：
-对于简单请求，浏览器直接发出cors请求。具体来说，就是在头信息中增加一个Origin字段。
-例：浏览器发现这次跨源ajax请求是简单请求，就自动在头信息中添加一个origin字段
-	GET /cors HTTP/1.1
-	Origin: http://api.bob.com
-	Host: api.alice.com
-	Accept-Language: en-US
-	Connection: keep-alive
-	User-Agent: Mozilla/5.0...
-Origin字段用来说明，本次请求来自哪个源（协议 + 域名 + 端口）。服务器根据这个值，决定是否同意这次请求。
-如果Origin指定的源，不在许可范围内，服务器会返回一个正常的HTTP回应。浏览器发现，这个回应的头信息没有包含Access-Control-Allow-Origin字段（详见下文），就知道出错了，从而抛出一个错误，被XMLHttpRequest的onerror回调函数捕获。注意，这种错误无法通过状态码识别，因为HTTP回应的状态码有可能是200。
-
-如果Origin指定的域名在许可范围内，服务器返回的响应，会多出几个头信息字段
-	Access-Control-Allow-Origin: http://api.bob.com
-	Access-Control-Allow-Credentials: true
-	Access-Control-Expose-Headers: FooBar
-	Content-Type: text/html; charset=utf-8
-上面的头信息之中，有三个与CORS请求相关的字段，都以Access-Control-开头
-
-Access-Control-Allow-Origin
-	该字段是必须的。它的值要么是请求时Origin字段的值，要么是一个*，表示接受任意域名的请求
-	如果想要设置多个源，却不想设置为*，就用if判断originHeader，动态的设置源
-Access-Control-Allow-Credentials
-	该字段可选。它的值是一个布尔值，表示是否允许发送Cookie。默认情况下，Cookie不包括在CORS请求之中。
-	设为true，即表示服务器明确许可，Cookie可以包含在请求中，一起发给服务器。
-	这个值也只能设为true，如果服务器不要浏览器发送Cookie，删除该字段即可。
-Access-Control-Expose-Headers
-	该字段可选。CORS请求时，XMLHttpRequest对象的getResponseHeader()方法只能拿到6个基本字段：Cache-Control、Content-Language、Content-Type、Expires、Last-Modified、Pragma。如果想拿到其他字段，就必须在Access-Control-Expose-Headers里面指定。
-	上面的例子指定，getResponseHeader('FooBar')可以返回FooBar字段的值。
-
-3.2 withCredentials属性
-	上面说到，CORS请求默认不发送Cookie和HTTP认证信息。如果要把Cookie发到服务器，一方面要服务器同意，指定Access-Control-Allow-Credentials字段。
-		Access-Control-Allow-Credentials: true
-	另一方面，开发者必须在AJAX请求中打开withCredentials属性（打开方式如上），否则，即使服务器同意发送Cookie，浏览器也不会发送。或者，服务器要求设置Cookie，浏览器也不会处理。
-	但是，如果省略withCredentials设置，有的浏览器还是会一起发送Cookie。这时，可以显式关闭withCredentials。
-
-	需要注意的是，如果要发送Cookie，Access-Control-Allow-Origin就不能设为星号。同时，Cookie依然遵循同源政策，只有用服务器域名设置的Cookie才会上传，其他域名的Cookie并不会上传，且（跨源）原网页代码中的document.cookie也无法读取服务器域名下的Cookie
-
-四、非简单请求
-4.1 预检请求
-非简单请求是那种对服务器有特殊要求的请求，比如请求方法是PUT或DELETE，或者Content-Type字段的类型是application/json
-非简单请求的CORS请求，会在正式通信之前，增加一次HTTP查询请求，称为"预检"请求（preflight）
-
-浏览器先询问服务器，当前网页所在的域名是否在服务器的许可名单之中，以及可以使用哪些HTTP动词和头信息字段。只有得到肯定答复，浏览器才会发出正式的XMLHttpRequest请求，否则就报错。
-下面是一段浏览器的JavaScript脚本。
-var url = 'http://api.alice.com/cors';
-var xhr = new XMLHttpRequest();
-xhr.open('PUT', url, true);
-xhr.setRequestHeader('X-Custom-Header', 'value');
-xhr.send();
-
-上面代码中，HTTP请求的方法是PUT，并且发送一个自定义头信息X-Custom-Header。
-浏览器发现，这是一个非简单请求，就自动发出一个"预检"请求，要求服务器确认可以这样请求。下面是这个"预检"请求的HTTP头信息
-
-OPTIONS /cors HTTP/1.1
-Origin: http://api.bob.com
-Access-Control-Request-Method: PUT
-Access-Control-Request-Headers: X-Custom-Header
-Host: api.alice.com
-Accept-Language: en-US
-Connection: keep-alive
-User-Agent: Mozilla/5.0...
-
-"预检"请求用的请求方法是OPTIONS，表示这个请求是用来询问的。头信息里面，关键字段是Origin，表示请求来自哪个源。
-除了Origin字段，"预检"请求的头信息包括两个特殊字段
-（1）Access-Control-Request-Method
-该字段是必须的，用来列出浏览器的CORS请求会用到哪些HTTP方法，上例是PUT。
-（2）Access-Control-Request-Headers
-该字段是一个逗号分隔的字符串，指定浏览器CORS请求会额外发送的头信息字段，上例是X-Custom-Header。
-
-4.2 预检请求的回应
-服务器收到"预检"请求以后，检查了Origin、Access-Control-Request-Method和Access-Control-Request-Headers字段以后，确认允许跨源请求，就可以做出回应
-HTTP/1.1 200 OK
-Date: Mon, 01 Dec 2008 01:15:39 GMT
-Server: Apache/2.0.61 (Unix)
-Access-Control-Allow-Origin: http://api.bob.com
-Access-Control-Allow-Methods: GET, POST, PUT
-Access-Control-Allow-Headers: X-Custom-Header
-Content-Type: text/html; charset=utf-8
-Content-Encoding: gzip
-Content-Length: 0
-Keep-Alive: timeout=2, max=100
-Connection: Keep-Alive
-Content-Type: text/plain
-上面的HTTP回应中，关键的是Access-Control-Allow-Origin字段，表示http://api.bob.com可以请求数据。该字段也可以设为星号，表示同意任意跨源请求
-Access-Control-Allow-Origin: *
-
-如果服务器否定了"预检"请求，会返回一个正常的HTTP回应，但是没有任何CORS相关的头信息字段。这时，浏览器就会认定，服务器不同意预检请求，因此触发一个错误，被XMLHttpRequest对象的onerror回调函数捕获。控制台会打印出如下的报错信息
-
-XMLHttpRequest cannot load http://api.alice.com.
-Origin http://api.bob.com is not allowed by Access-Control-Allow-Origin.
-
-服务器回应的其他CORS相关字段如下。
-Access-Control-Allow-Methods: GET, POST, PUT
-Access-Control-Allow-Headers: X-Custom-Header
-Access-Control-Allow-Credentials: true
-Access-Control-Max-Age: 1728000
-
-（1）Access-Control-Allow-Methods
-该字段必需，它的值是逗号分隔的一个字符串，表明服务器支持的所有跨域请求的方法。注意，返回的是所有支持的方法，而不单是浏览器请求的那个方法。这是为了避免多次"预检"请求。
-（2）Access-Control-Allow-Headers
-如果浏览器请求包括Access-Control-Request-Headers字段，则Access-Control-Allow-Headers字段是必需的。它也是一个逗号分隔的字符串，表明服务器支持的所有头信息字段，不限于浏览器在"预检"中请求的字段。
-（3）Access-Control-Allow-Credentials
-该字段与简单请求时的含义相同。
-（4）Access-Control-Max-Age
-该字段可选，用来指定本次预检请求的有效期，单位为秒。上面结果中，有效期是20天（1728000秒），即允许缓存该条回应1728000秒（即20天），在此期间，不用发出另一条预检请求。
-4.3 浏览器的正常请求和回应
-
-一旦服务器通过了"预检"请求，以后每次浏览器正常的CORS请求，就都跟简单请求一样，会有一个Origin头信息字段。服务器的回应，也都会有一个Access-Control-Allow-Origin头信息字段。
-下面是"预检"请求之后，浏览器的正常CORS请求。
-
-PUT /cors HTTP/1.1
-Origin: http://api.bob.com
-Host: api.alice.com
-X-Custom-Header: value
-Accept-Language: en-US
-Connection: keep-alive
-User-Agent: Mozilla/5.0...
-
-上面头信息的Origin字段是浏览器自动添加的。
-下面是服务器正常的回应。
-Access-Control-Allow-Origin: http://api.bob.com
-Content-Type: text/html; charset=utf-8
-上面头信息中，Access-Control-Allow-Origin字段是每次回应都必定包含的。
-
-五、与JSONP的比较
-CORS与JSONP的使用目的相同，但是比JSONP更强大。
-JSONP只支持GET请求，CORS支持所有类型的HTTP请求。JSONP的优势在于支持老式浏览器，以及可以向不支持CORS的网站请求数据。
-
-使用代理解决跨域问题
-跨不跨域实际上是由客户端来告诉服务器的，为我们使用代理提供了理论基础。
-思想：让发送出去的请求代理成是本域的
-Nginx配置：
-	server {
-		listen 80; #监听80端口
-		server_name  xxx.com; #域名
-		location /xxx-web/papi {
-			add_header 'Access-Control-Allow-Origin' $http_origin;
-			add_header 'Access-Control-Allow-Credentials' 'true';
-			add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
-			add_header 'Access-Control-Allow-Headers' 'DNT,web-token,app-token,Authorization,Accept,Origin,Keep-Alive,User-Agent,X-Mx-ReqToken,X-Data-Type,X-Auth-Token,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range';
-			add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range';
-			if ($request_method = 'OPTIONS') {
-				add_header 'Access-Control-Max-Age' 1728000;
-				add_header 'Content-Type' 'text/plain; charset=utf-8';
-				add_header 'Content-Length' 0;
-				return 204;
-			}
-			root   html;
-			index  index.html index.htm;
-			proxy_pass http://127.0.0.1:7071;  #真正的服务地址
-			proxy_set_header Host $host;
-			proxy_set_header X-Real-IP $remote_addr;
-			proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-			proxy_set_header X-Forwarded-Proto $scheme;
-			proxy_connect_timeout 5;
-		}
-		location /xxx-web {
-			add_header 'Access-Control-Allow-Origin' $http_origin;
-			add_header 'Access-Control-Allow-Credentials' 'true';
-			add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
-			add_header 'Access-Control-Allow-Headers' 'DNT,web-token,app-token,Authorization,Accept,Origin,Keep-Alive,User-Agent,X-Mx-ReqToken,X-Data-Type,X-Auth-Token,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range';
-			add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range';
-			if ($request_method = 'OPTIONS') {
-				add_header 'Access-Control-Max-Age' 1728000;
-				add_header 'Content-Type' 'text/plain; charset=utf-8';
-				add_header 'Content-Length' 0;
-				return 204;
-			}
-			root   html;
-			index  index.html index.htm;
-			proxy_pass http://127.0.0.1:8080;
-			proxy_set_header Host $host;
-			proxy_set_header X-Real-IP $remote_addr;
-			proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-			proxy_set_header X-Forwarded-Proto $scheme;
-			proxy_connect_timeout 5;
-		}
-		location / {
-			root   /var/www/xxx/wechat/webroot;
-			index  index.html index.htm;
-		}
-		error_page   500 502 503 504  /50x.html;
-		location = /50x.html {
-			root  html;
-		}
+	if (loading === true) {
+		return <p>Loading ...</p>
+	}
+	return <div>
+		<p>You're viewing: {person.name}</p>
+		<p>Height: {person.height}</p>
+		<p>Mass: {person.mass}</p>
+	</div>
 }
-代理转发很方便，但是使用代理也是看场景的。如果后端接口是一个公共api，比如公共服务获取天气什么的。前端调用的时候总不能每次都让运维配置一下Nginx，如果兼容性没问题（ie10及以上），cors才是通用的做法。
-
-同源限制策略下，dom查询的正确打开方式。
-
-1、设置document.domain解决无法读取非同源网页的 Cookie问题
-	因为浏览器是通过document.domain属性来检查两个页面是否同源，因此只要通过设置相同的document.domain，两个页面就可以共享Cookie（此方案仅限主域相同，子域不同的跨域应用场景。）
-	// 两个页面都设置
-	document.domain = 'test.com';
-2、跨文档通信 API：window.postMessage()
-	调用postMessage方法实现父窗口http://test1.com向子窗口http://test2.com发消息（子窗口同样可以通过该方法发送消息给父窗口）
-	它可用于解决以下方面的问题：
-		页面和其打开的新窗口的数据传递
-		多窗口之间消息传递
-		页面与嵌套的iframe消息传递
-		上面三个场景的跨域数据传递
-		// 父窗口打开一个子窗口
-		var openWindow = window.open('http://test2.com', 'title');
-		// 父窗口向子窗口发消息(第一个参数代表发送的内容，第二个参数代表接收消息窗口的url)
-		openWindow.postMessage('Nice to meet you!', 'http://test2.com');
-
-		调用message事件，监听对方发送的消息
-		// 监听 message 消息
-		window.addEventListener('message', function (e) {
-			console.log(e.source); // e.source 发送消息的窗口
-			console.log(e.origin); // e.origin 消息发向的网址
-			console.log(e.data);   // e.data   发送的消息
-		},false);
-
-
-Cookie
-一、什么是cookie
-	HTTP协议本身是无状态的。什么是无状态呢？即服务器无法判断用户身份。Cookie实际上是一小段的文本信息（key-value格式）。客户端向服务器发起请求，如果服务器需要记录该用户状态，就使用response向客户端浏览器颁发一个Cookie。客户端浏览器会把Cookie保存起来。当浏览器再请求该网站时，浏览器把请求的网址连同该Cookie一同提交给服务器。服务器检查该Cookie，以此来辨认用户状态。
-	打个比方，我们去银行办理储蓄业务，第一次给你办了张银行卡，里面存放了身份证、密码、手机等个人信息。当你下次再来这个银行时，银行机器能识别你的卡，从而能够直接办理业务。
-二、cookie机制
-	当用户第一次访问并登陆一个网站的时候，cookie的设置以及发送会经历以下4个步骤
-	1、客户端发送一个请求到服务器
-	2、服务器发送一个HttpResponse响应到客户端，其中包含Set-Cookie的头部
-	3、客户端保存cookie，之后向服务器发送请求时，HttpRequest请求中会包含一个Cookie的头部
-	4、服务器返回响应数据
-三、cookie的操作
-	1、使用js创建/修改Cookie
-		js可以使用 document.cookie 属性来创建 、读取、及删除 cookie。
-		document.cookie="username=John Doe";
-		为 cookie 添加一个过期时间（以 UTC 或 GMT 时间）。默认情况下，cookie 在浏览器关闭时删除
-		document.cookie="username=John Doe; expires=Thu, 18 Dec 2043 12:00:00 GMT";
-		您可以使用 path 参数告诉浏览器 cookie 的路径。默认情况下，cookie 属于当前页面
-		document.cookie="username=John Doe; expires=Thu, 18 Dec 2043 12:00:00 GMT; path=/";
-	2、使用js删除cookie
-		删除 cookie 非常简单，只需要设置 expires 参数为以前的时间即可
-		document.cookie = "username=; expires=Thu, 01 Jan 1970 00:00:00 GMT"
-	3、cookie不会被覆盖
-		Cookie 以名/值对形式存储，如果您设置了新的 cookie，旧的 cookie 不会被覆盖，当使用document.cookie获取的时候，新添加的cookie会以键值对的方式出现在字符串中
-	4、cookie属性选项
-		NAME=VALUE	键值对，可以设置要保存的 Key/Value，注意这里的 NAME 不能和其他属性项的名字一样
-		Expires	过期时间，在设置的某个时间点后该 Cookie 就会失效
-		Domain	生成该 Cookie 的域名，如 domain="www.baidu.com"
-		Path	该 Cookie 是在当前的哪个路径下生成的，如 path=/wp-admin/
-		Secure	如果设置了这个属性，那么只会在 SSH 连接时才会回传该 Cookie
-	5、cookie的域名
-		Cookie是不可以跨域名的，隐私安全机制禁止网站非法获取其他网站的Cookie
-		正常情况下，同一个一级域名下的两个二级域名也不能交互使用Cookie
-四、设置cookie实例
-	1、设置 cookie 值的函数
-	//cookie的名称，值，过期时间
-	function setCookie(cname,cvalue,exdays){
-		var d = new Date();
-		d.setTime(d.getTime()+(exdays*24*60*60*1000));
-		var expires = "expires="+d.toGMTString();
-		document.cookie = cname + "=" + cvalue + "; " + expires;
+自定义封装后：
+const usePerson = (personId) => {
+	const [loading, setLoading] = useState(true);
+	const [person, setPerson] = useState({});
+	useEffect(() => {
+		setLoading(true);
+		fetch(`https://swapi.co/api/people/${personId}/`)
+			.then(response => response.json())
+			.then(data => {
+				setPerson(data);
+				setLoading(false);
+			});
+	}, [personId]);
+	return [loading, person];
+};
+上面代码中，usePerson()就是一个自定义的 Hook。Person 组件就改用这个新的钩子，引入封装的逻辑。
+const Person = ({ personId }) => {
+	const [loading, person] = usePerson(personId);
+	if (loading === true) {
+		return <p>Loading ...</p>;
 	}
-	2、获取 cookie 值的函数
-	//创建一个函数用于返回指定 cookie 的值
-	function getCookie(cname){
-		var name = cname + "=";
-		var ca = document.cookie.split(';');
-		for(var i=0; i<ca.length; i++) 
-		{
-			var c = ca[i].trim();
-			if (c.indexOf(name)==0) return c.substring(name.length,c.length);
-		}
-		return "";
+	return (
+		<div>
+			<p>You're viewing: {person.name}</p>
+			<p>Height: {person.height}</p>
+			<p>Mass: {person.mass}</p>
+		</div>
+	);
+};
+
+immutable.js
+一、为什么要使用immutable.js
+	熟悉React组件生命周期的都知道：调用setState方法总是会触发render方法，从而进行vDom，re-render相关逻辑。即使你没有改变实际的值。
+	比如：组件state并未被改变，但仍然会触发render。
+		this.state = {count:0}
+		this.setState({count:0})
+	为了避免这种性能上的浪费，react出了一个shouldComponentUpdate来控制是否进行vDom和re-render相关逻辑。于是PureRenderMixin作为一种优化技巧被使用。它仅仅是浅比较对象，深层次的数据结构根本不管用。
+	在js中我们可以通过deep clone来模拟immutable.js，就是每次对数据进行操作，新对数据进行deep clone出一个新数据。但是这样非常的慢
+var cloneDeep = require('lodash.clonedeep');
+var data = {
+	id: 'data',
+	author: {
+		name: 'mdemo',
+		github: 'https://github.com/demohi'
 	}
-	3、检测 cookie 值的函数
-	function checkCookie(){
-		var username=getCookie("username");
-		if (username!=""){
-			alert("Welcome again " + username);
-		}else {
-			username = prompt("Please enter your name:","");
-			if (username!="" && username!=null){
-				setCookie("username",username,365);
-			}
-		}
+};
+var data1 = cloneDeep(data);
+console.log('equal:', data1 === data); //false
+data1.id = 'data1';
+data1.author.name = 'demohi';
+console.log(data.id);// data  
+console.log(data1.id);// data1
+console.log(data.author.name);//mdemo  
+console.log(data1.author.name);//demohi
+
+这时候immutablejs就派上用场了。
+var map1 = Immutable.fromJS({ a: 1, b: 1, c: { b: { c: { d: { e: 7 } } } } });
+var map2 = Immutable.fromJS({ a: 1, b: 1, c: { b: { c: { d: { e: 7 } } } } });
+Immutable.is(map1, map2);  // true
+遍历对象不再用for-in，可以这样：
+Immutable.fromJS({a:1, b:2, c:3}).map(function(value, key) { /* do some thing */});
+
+二、什么是immutable Data?
+	immutable Data 就是一旦创建就不能被更改的数据。对immutable对象的任何操作（添加、删除、修改）都会返回一个新的immutable对象。
+	immutable实现原理是 Persistent Data structure（持久化数据结构），也就是使用旧数据创建新数据时，要保证旧数据同时可用且不变。
+	同时为了避免deepcopy把所有节点都复制一遍带来的性能损耗，immutable使用了structural Sharing...（结构共享），即如果对象数中一个节点发生变化，只修改这个节点和受它影响的父节点，其他节点则进行共享。
+	例子：
+// immutable.js 的Map
+let a2 = Immutable.fromJS({
+	b: 1,
+	c: {
+		c1: 123
 	}
-// prompt()方法用于显示可提示用户进行输入的对话框S
+});
+// 对 Immutable 对象的任何修改或添加删除操作都会返回一个新的 Immutable 对象
+let b2 = a2.set('b', 2);
+console.log(a2.get('b'), b2.get('b')); // 1, 2  对象 a2 的 b 值并没有变成2。
+console.log(a2 === b2); //  false
+//如果对象树中一个节点发生变化，只修改这个节点和受它影响的父节点，其它节点则进行共享。
+console.log(a2.get('c') === b2.get('c')); //true
 
-小插曲：content-type 
-在http协议消息头中，使用content-type来表示具体请求中的媒体类型信息。
-	text/plain：纯文本格式
-  application/x-www-form-urlencoded：<form encType="application/x-www-form-urlencoded">中默认的encType，form表单数据被编码为key/value格式发送到服务器（表单默认的提数据的格式）
-	multipart/form-data：需要在表单中进行文件上传时，就需要使用该格式
-
-	text/html：HTML格式
-	text/xml：XML格式
-	image/gif：gif图片格式 
-	image/jpeg：jpg图片格式
-	image/png：png图片格式
-	application/xhtml+xml：XHTML格式
-  application/xml：XML数据格式
-  application/atom+xml：Atom XML聚合格式
-  application/json：JSON数据格式
-  application/pdf：pdf格式
-  application/msword：Word文档格式
-  application/octet-stream：二进制流数据（如常见的文件下载）
-
-	小插曲二：费恩曼学习法
-	我们在学习知识的时候，不仅要做到知其然，更要做到知其所以然。有些时候，你觉得自己完全搞懂了某个问题，可是在向其他人讲解的时候，却结结巴巴讲不出来。这并不是表达能力的问题，而是你压根就没搞懂。著名的诺贝尔奖获得者理查德·费恩曼先生有一套自己的学习方法，这套方法施行起来极其简单，但效果却出奇地惊人（如果你能坚持使用的话）。下面就是费恩曼学习法的四个步骤。
-
-	第一步，选择一个知识点
-	准备好想要学习的知识点，思考一下有关这个知识点的内容。
-
-	第二步，试着把它讲出来
-	现在，关键的步骤来了，试着把它讲出来，用最简单最平实的语言。想象你的听者是一个门外汉，你能让他听懂你所讲述的内容吗？
-	千万不要原文背诵教科书上的内容，甚至，连教科书上那些晦涩生僻的术语都尽量别用。如果你只是简单地复述原文，那么你不过是自欺欺人罢了。不怕自己不懂，就怕不知道自己不懂。
-	这个步骤帮助你检查你是否真正理解了这个知识点，以及，如果并没有理解，那么还差在什么地方。
-
-	第三步，查缺补漏
-	现在你已经知道了你离真正理解这个知识点还差在什么地方。现在返回教学材料重新进行学习，有目的地查缺补漏。
-	然后重复第二步和第三步。
-
-	第四步，回顾与简化
-
-	到了这一步，你已经有足够的信心说你已经理解了。回顾一下你的讲解，如果仍然有某些词语不那么平实和直截了当，看看是否还有简化的余地。
-	这就是费恩曼学习法的全部内容。它的核心思想是：若能讲出来，才是真的懂。
+三、为什么要在React.js中使用immutable
+	它是一个完全独立的库，无论基于什么框架都可以使用它。意义在于他弥补了js没有不可变数据结构的问题。
+	由于是不可变的，可以放心的对对象进行任何操作。在React开发中，频繁操作state或者store，配合immutablejs快，安全，方便。
